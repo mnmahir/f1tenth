@@ -1,0 +1,6 @@
+[submodule "VESC/vesc_firmware"]
+	path = VESC/vesc_firmware
+	url = https://github.com/f1tenth/vesc_firmware.git
+[submodule "VESC/vesc-release"]
+	path = VESC/vesc-release
+	url = https://github.com/f1tenth/vesc-release.git
