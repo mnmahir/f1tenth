@@ -15,4 +15,5 @@ LIST_PYTHON_PKG=(   # List of python packages to be installed ("Package Name" "-
 
 
 LIST_EXEC_CMD=(     # List of commands to be executed ("Command")
+    "rm -rf $WS_PROJECT_REPO/pkg/_others/src/navigation2/nav2_system_tests"
 )
