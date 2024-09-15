@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<!-- URDF of Robot Simulation -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro"  name="ugv_hunterse">
+    <!-- Physical Description -->
+    <xacro:include filename="physical_description/robot_base.xacro" />
+    <xacro:include filename="physical_description/robot_hat.xacro" />
+    <!-- Simulation -->
+    <xacro:include filename="gazebo_sim/gzc_core.xacro" />
+    <xacro:include filename="gazebo_sim/gzc_hat.xacro" />
+</robot>

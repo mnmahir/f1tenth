@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+    <!-- Hat Base -->
+    <link name="hat_link">
+        <visual name="">
+            <origin xyz="0.0 0.0 -0.16" rpy="0.0 0.0 0.0"/>
+             <geometry>
+                <mesh filename="file://$(find ugv_description)/models/hat/Hunter_SE_HAT.stl" />
+            </geometry>
+            <material name="">
+                <color rgba="1.0 1.0 1.0 1.0"/>
+            </material>
+        </visual>
+    </link>
+    <joint name="hat_link_joint" type="fixed">
+        <origin xyz="-0.19 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <parent link="base_link"/>
+        <child link="hat_link"/>
+    </joint>
+</robot>
