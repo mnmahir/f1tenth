@@ -78,7 +78,7 @@ def generate_launch_description():
 
 
     return LaunchDescription([
-            joy_config_arg,
+            joy_teleop_config_arg,
             vesc_config_arg,
             mux_config_arg,
 
