@@ -79,7 +79,7 @@ bind_device "99-joypad-logitech-f710-usb.rules" "Logitech F710 Joypad"
 bind_device "99-imu-hiwonder-usb.rules" "HiWonder IMU"
 
 # LDS01 Lidar USB interface
-bind_device "99-lidar-lds01-usb.rules" "LDS01 LiDAR"
+bind_device "99-lidar-robotis-lds01-usb.rules" "LDS01 LiDAR"
 
 
 
