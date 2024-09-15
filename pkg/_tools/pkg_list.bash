@@ -17,4 +17,7 @@ LIST_PYTHON_PKG=(   # List of python packages to be installed ("Package Name" "-
 
 
 LIST_EXEC_CMD=(     # List of commands to be executed ("Command")
+    # Xpad driver to support F710 controller in JetPack 6 using X mode.
+    # "sudo git clone https://github.com/paroj/xpad.git /usr/src/xpad-0.4"    
+    # "sudo dkms install -m xpad -v 0.4"
 )
