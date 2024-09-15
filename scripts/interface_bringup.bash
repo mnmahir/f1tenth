@@ -64,17 +64,12 @@ bind_device() {
     fi
     echo -e "$BASH_INFO Done with $DEVICE_DESC"
     echo -e "================================================="
-
-    
-
-
-
 }
 
 # VESC USB interface
 bind_device "99-vesc-usb.rules" "VESC"
 
-# Microsoft XBox One Joypad Joypad USB interface
+# Microsoft XBox One Joypad Joypad USB interface (If using Jetpack 6, see pkg/_tools/pkg_list.bash and uncomment the bash commands to install the driver using 'r2pkg')
 bind_device "99-joypad-microsoft-xbox-one-usb.rules" "Microsoft XBox One Joypad"
 
 # Logitech F710 Joypad USB interface (If using Jetpack 6, see pkg/_tools/pkg_list.bash and uncomment the bash commands to install the driver using 'r2pkg')
