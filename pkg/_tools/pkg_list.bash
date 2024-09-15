@@ -7,6 +7,7 @@ LIST_APT_PKG=(  # List of apt packages to be installed ("Package Name" "--option
     "ros-$ROS_DISTRO-rqt*"
     "ros-$ROS_DISTRO-rviz2"
     "ros-$ROS_DISTRO-rviz*"
+    "jstest-gtk"    # Joystick  GUI
 )
 
 
