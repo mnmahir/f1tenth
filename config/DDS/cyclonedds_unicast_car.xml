@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CycloneDDS xmlns="https://cdds.io/config" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://cdds.io/config https://raw.githubusercontent.com/eclipse-cyclonedds/cyclonedds/master/etc/cyclonedds.xsd">
+    <Domain Id="any">
+        <General>
+            <Interfaces>
+                <NetworkInterface name="wlan0" priority="default" />
+            </Interfaces>
+            <AllowMulticast>false</AllowMulticast>
+            <MaxMessageSize>65500B</MaxMessageSize>
+        </General>
+        <Discovery>
+            <EnableTopicDiscoveryEndpoints>true</EnableTopicDiscoveryEndpoints>
+        <ParticipantIndex>auto</ParticipantIndex>
+        <MaxAutoParticipantIndex>50</MaxAutoParticipantIndex>
+            <!-- Nodes from addresses listed here will be able to transmit/receive message. Restart terminal for changes to take effect as it is residual. -->
+            <Peers> 
+                <!-- Local -->
+                <Peer Address="localhost"/>
+                <!-- Pit wired address -->
+                <Peer Address="192.168.100.11"/>
+                <!-- Pit wireless address -->
+                <Peer Address="192.168.100.6"/>
+            </Peers>
+        </Discovery>
+        <Internal>
+            <Watermarks>
+                <WhcHigh>500kB</WhcHigh>
+            </Watermarks>
+        </Internal>
+    </Domain>
+</CycloneDDS>

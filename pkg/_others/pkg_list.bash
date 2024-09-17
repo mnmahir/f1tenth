@@ -7,6 +7,7 @@ LIST_GIT_REPO=(     # List of git repositories to be cloned ("Git URL" "Commit I
 
 
 LIST_APT_PKG=(  # List of apt packages to be installed ("Package Name" "--optional-flag")
+    "ros-$ROS_DISTRO-rmw-cyclonedds-cpp"
 )
 
 
