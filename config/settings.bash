@@ -26,18 +26,5 @@ export RCUTILS_COLORIZED_OUTPUT=1
 # export __GLX_VENDOR_LIBRARY_NAME=nvidia
 
 
-# Local settings folder creation
-if [ ! -d "$WS_PROJECT_REPO/config/local" ]; then
-	echo -e "$BASH_INFO Creating local folder in $WS_PROJECT_REPO/config"
-	mkdir -p $WS_PROJECT_REPO/config/local
-	
-fi
-if [ ! -f "$WS_PROJECT_REPO/config/local/.gitignore" ]; then
-	echo "*" > $WS_PROJECT_REPO/config/local/.gitignore
-fi
-if [ ! -f "$WS_PROJECT_REPO/config/local/local_settings.bash" ]; then
-	echo 'export CYCLONEDDS_URI="$WS_PROJECT_REPO/config/DDS/cyclonedds_default.xml"' > $WS_PROJECT_REPO/config/local/local_settings.bash
-fi
-
-
+# ======= LOCAL SETTINGS=======
 source $WS_PROJECT_REPO/config/local/local_settings.bash
