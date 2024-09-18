@@ -1,0 +1,85 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <!-- Traxxas Ford Fiesta ST Rally VXL -->
+    <xacro:property name="wheelbase" value="0.324" />
+
+    <xacro:property name="wheel_radius" value="0.05" />
+    <xacro:property name="wheel_width" value="0.043" />
+    <xacro:property name="front_track" value="0.235" />
+    <xacro:property name="rear_track" value="0.235" />
+    <xacro:property name="max_steering_angle" value="0.5" />
+    <xacro:property name="max_programmed_steering_angle" value="0.4" />
+
+    <xacro:property name="base_mass" value="2.8"/>
+    <xacro:property name="wheel_mass" value="0.06"/>
+    <xacro:property name="platform_mass" value="1.2"/>
+
+    <xacro:property name="platform_height" value="0.005"/>
+
+
+
+
+
+    <!-- COLORS -->
+    <material name="white">
+        <color rgba="1.0 1.0 1.0 1" />
+    </material>
+    <material name="black">
+        <color rgba="0.1 0.1 0.1 1" />
+    </material>
+    <material name="grey">
+        <color rgba="0.5 0.5 0.5 1" />
+    </material>
+    <material name="red">
+        <color rgba="1.0 0.0 0 1" />
+    </material>
+    <material name="green">
+        <color rgba="0.0 0.5 0 1" />
+    </material>
+    <material name="blue">
+        <color rgba="0 0 0.5 1" />
+    </material>
+    <material name="yellow">
+        <color rgba="1.0 1.0 0 1" />
+    </material>
+    <material name="orange">
+        <color rgba="1.0 0.5 0 1" />
+    </material>
+
+
+
+    <!-- INERTIAS -->
+    <xacro:macro name="box_inertia" params="m l w h xyz rpy">
+        <inertial>
+            <origin xyz="${xyz}" rpy="${rpy}" />
+            <mass value="${m}" />
+            <inertia ixx="${(m/12) * (h*h + l*l)}" ixy="0" ixz="0"
+                     iyy="${(m/12) * (w*w + l*l)}" iyz="0"
+                     izz="${(m/12) * (w*w + h*h)}" />
+        </inertial>
+    </xacro:macro>
+
+    <xacro:macro name="cylinder_inertia" params="m r h xyz rpy">
+        <inertial>
+            <origin xyz="${xyz}" rpy="${rpy}" />
+            <mass value="${m}" />
+            <inertia ixx="${(m/12) * (3*r*r + h*h)}" ixy="0" ixz="0"
+                     iyy="${(m/12) * (3*r*r + h*h)}" iyz="0"
+                     izz="${(m/2) * (r*r)}" />
+        </inertial>
+    </xacro:macro>
+
+    <xacro:macro name="sphere_inertia" params="m r xyz rpy">
+        <inertial>
+            <origin xyz="${xyz}" rpy="${rpy}" />
+            <mass value="${m}" />
+            <inertia ixx="${(2/5) * m * r * r}" ixy="0" ixz="0"
+                     iyy="${(2/5) * m * r * r}" iyz="0"
+                     izz="${(2/5) * m * r * r}" />
+        </inertial>
+    </xacro:macro>
+
+
+
+</robot>

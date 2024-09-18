@@ -1,20 +1,73 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
-    <!-- Hat Base -->
-    <link name="hat_link">
-        <visual name="">
-            <origin xyz="0.0 0.0 -0.16" rpy="0.0 0.0 0.0"/>
+    <!-- PLATFORM BASE -->
+    <link name="platform_link">
+        <visual>
+            <origin xyz="0 0 ${-(platform_height / 2)}" rpy="0 0 0"/>
              <geometry>
-                <mesh filename="file://$(find ugv_description)/models/hat/Hunter_SE_HAT.stl" />
+                <box size="${wheelbase} ${rear_track * 0.6} ${platform_height}"/>
             </geometry>
-            <material name="">
-                <color rgba="1.0 1.0 1.0 1.0"/>
-            </material>
+            <material name="white"/>
         </visual>
     </link>
     <joint name="hat_link_joint" type="fixed">
-        <origin xyz="-0.19 0.0 0.0" rpy="0.0 0.0 0.0"/>
         <parent link="base_link"/>
-        <child link="hat_link"/>
+        <child link="platform_link"/>
+        <origin xyz="0 0 0.05" rpy="0 0 0"/>
     </joint>
+
+    <!-- LIDAR SENSOR -->
+    <!-- Hokuyo UST-10LX (Perception is at 47.4 mm from base)-->
+    <xacro:property name="ust_10lx_perception_height" value="0.0474" />
+    <link name="lidar_hky_link">
+        <visual>
+            <origin xyz="0 0 ${(0.07/2) - ust_10lx_perception_height}" rpy="0 0 0"/>
+            <geometry>
+                <cylinder radius="0.025" length="0.07"/>
+            </geometry>
+            <material name="orange"/>
+        </visual>
+    </link>
+    <joint name="lidar_hky_link_joint" type="fixed">
+        <parent link="platform_link"/>
+        <child link="lidar_hky_link"/>
+        <origin xyz="0.12 0 ${ust_10lx_perception_height + 0}" rpy="0 0 0"/>
+    </joint>
+    
+
+    <!-- IMU SENSOR -->
+    <!-- VESC 6 MKVI -->
+    <link name="imu_vesc_link">
+        <visual>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <geometry>
+                <box size="0.07 0.075 0.017"/>
+            </geometry>
+            <material name="orange"/>
+        </visual>
+    </link>
+    <joint name="imu_vesc_link_joint" type="fixed">
+        <parent link="platform_link"/>
+        <child link="imu_vesc_link"/>
+        <origin xyz="-0.1 0 0.01428" rpy="0 0 0"/>
+    </joint>
+
+
+    <!-- CAMERA SENSOR -->
+    <!-- Logitech C920 -->
+    <link name="camera_c920_link">
+        <visual>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <geometry>
+                <box size="0.02412 0.09333 0.02886"/>
+            </geometry>
+            <material name="orange"/>
+        </visual>
+    </link>
+    <joint name="camera_c920_link_joint" type="fixed">
+        <parent link="platform_link"/>
+        <child link="camera_c920_link"/>
+        <origin xyz="0.08 0 0.085" rpy="0 0 0"/>
+    </joint>
+
 </robot>
