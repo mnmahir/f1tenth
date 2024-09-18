@@ -52,8 +52,8 @@
     <hall_table__6>4</hall_table__6>
     <hall_table__7>-1</hall_table__7>
     <hall_sl_erpm>2000</hall_sl_erpm>
-    <foc_current_kp>0.0009</foc_current_kp>
-    <foc_current_ki>5.92</foc_current_ki>
+    <foc_current_kp>0.0028</foc_current_kp>
+    <foc_current_ki>6.87</foc_current_ki>
     <foc_f_zv>30000</foc_f_zv>
     <foc_dt_us>0.08</foc_dt_us>
     <foc_encoder_inverted>0</foc_encoder_inverted>
@@ -62,11 +62,11 @@
     <foc_sensor_mode>0</foc_sensor_mode>
     <foc_pll_kp>2000</foc_pll_kp>
     <foc_pll_ki>20000</foc_pll_ki>
-    <foc_motor_l>8.6e-07</foc_motor_l>
-    <foc_motor_ld_lq_diff>2.6e-07</foc_motor_ld_lq_diff>
-    <foc_motor_r>0.0059</foc_motor_r>
-    <foc_motor_flux_linkage>0.000776</foc_motor_flux_linkage>
-    <foc_observer_gain>1.66064e+09</foc_observer_gain>
+    <foc_motor_l>2.77e-06</foc_motor_l>
+    <foc_motor_ld_lq_diff>2.1e-07</foc_motor_ld_lq_diff>
+    <foc_motor_r>0.0069</foc_motor_r>
+    <foc_motor_flux_linkage>0.00071</foc_motor_flux_linkage>
+    <foc_observer_gain>1.98373e+09</foc_observer_gain>
     <foc_observer_gain_slow>0.3</foc_observer_gain_slow>
     <foc_observer_offset>-1</foc_observer_offset>
     <foc_duty_dowmramp_kp>10</foc_duty_dowmramp_kp>

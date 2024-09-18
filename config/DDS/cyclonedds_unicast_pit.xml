@@ -3,9 +3,7 @@
     <Domain Id="any">
         <General>
             <Interfaces>
-                <!-- From testing, message still able to be tx/rx over ethernet when wifi is off -->
-                <!-- <NetworkInterface name="wlan0" priority="default" /> -->
-                <NetworkInterface autodetermine="true"/>
+                <NetworkInterface name="wlp0s20f3" priority="default" />
             </Interfaces>
             <AllowMulticast>false</AllowMulticast>
             <MaxMessageSize>65500B</MaxMessageSize>
