@@ -3,8 +3,7 @@
     <Domain Id="any">
         <General>
             <Interfaces>
-                <!-- Exactly the same as default... -->
-                <NetworkInterface autodetermine="true"/>
+                <NetworkInterface name="wlp0s20f3" priority="default" />
             </Interfaces>
         </General>
     </Domain>
