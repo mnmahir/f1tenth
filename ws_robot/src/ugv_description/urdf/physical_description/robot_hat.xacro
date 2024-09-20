@@ -19,7 +19,7 @@
     <!-- LIDAR SENSOR -->
     <!-- Hokuyo UST-10LX (Perception is at 47.4 mm from base)-->
     <xacro:property name="ust_10lx_perception_height" value="0.0474" />
-    <link name="lidar_hky_link">
+    <link name="lidar_1_link">
         <visual>
             <origin xyz="0 0 ${(0.07/2) - ust_10lx_perception_height}" rpy="0 0 0"/>
             <geometry>
@@ -28,16 +28,16 @@
             <material name="orange"/>
         </visual>
     </link>
-    <joint name="lidar_hky_link_joint" type="fixed">
+    <joint name="lidar_1_link_joint" type="fixed">
         <parent link="platform_link"/>
-        <child link="lidar_hky_link"/>
+        <child link="lidar_1_link"/>
         <origin xyz="0.12 0 ${ust_10lx_perception_height + 0}" rpy="0 0 0"/>
     </joint>
     
 
     <!-- IMU SENSOR -->
     <!-- VESC 6 MKVI -->
-    <link name="imu_vesc_link">
+    <link name="imu_1_link">
         <visual>
             <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
@@ -46,16 +46,16 @@
             <material name="orange"/>
         </visual>
     </link>
-    <joint name="imu_vesc_link_joint" type="fixed">
+    <joint name="imu_1_link_joint" type="fixed">
         <parent link="platform_link"/>
-        <child link="imu_vesc_link"/>
+        <child link="imu_1_link"/>
         <origin xyz="-0.1 0 0.01428" rpy="0 0 0"/>
     </joint>
 
 
     <!-- CAMERA SENSOR -->
     <!-- Logitech C920 -->
-    <link name="camera_c920_link">
+    <link name="camera_1_link">
         <visual>
             <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
@@ -64,10 +64,17 @@
             <material name="orange"/>
         </visual>
     </link>
-    <joint name="camera_c920_link_joint" type="fixed">
+    <joint name="camera_1_link_joint" type="fixed">
         <parent link="platform_link"/>
-        <child link="camera_c920_link"/>
+        <child link="camera_1_link"/>
         <origin xyz="0.08 0 0.085" rpy="0 0 0"/>
+    </joint>
+    <!-- REP-103 convention -->
+    <link name="camera_optical_1_link"/>
+    <joint name="camera_optical_1_link_joint" type="fixed">
+        <parent link="camera_1_link"/>
+        <child link="camera_optical_1_link"/>
+        <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
     </joint>
 
 </robot>

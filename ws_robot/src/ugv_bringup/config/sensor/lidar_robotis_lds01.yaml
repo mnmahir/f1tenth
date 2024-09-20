@@ -1,4 +1,4 @@
 hlds_laser_publisher_node:
   ros__parameters:
     port: "/dev/sensors/lidar-robotis-lds01-usb"
-    frame_id: "2D_LiDAR"
+    frame_id: "lidar_1_link"

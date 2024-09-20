@@ -2,7 +2,7 @@
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
     
     <!-- FOOTPRINT (Projection of rear axle center on the ground)-->
-    <link name="base_footprint"></link>
+    <link name="base_footprint"/>
     <!-- BASE LINK (Center between front and rear axle) -->
     <link name="base_link">
         <visual>

@@ -35,10 +35,10 @@ def generate_launch_description():
 
 
     return LaunchDescription([
-            # lidar_hokuyo_ust10lx_config_arg,
-            lidar_robotis_lds01_config_arg,
+            lidar_hokuyo_ust10lx_config_arg,
+            # lidar_robotis_lds01_config_arg,
 
-            # lidar_hokuyo_urg_node,
-            lidar_robotis_lds01_node,
+            lidar_hokuyo_urg_node,
+            # lidar_robotis_lds01_node,
         ]
     )
