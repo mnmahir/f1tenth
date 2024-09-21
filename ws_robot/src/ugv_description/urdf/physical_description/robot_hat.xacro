@@ -2,10 +2,38 @@
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
     <!-- PLATFORM BASE -->
     <link name="platform_link">
-        <visual>
+        <!-- <visual>
             <origin xyz="0 0 ${-(platform_height / 2)}" rpy="0 0 0"/>
              <geometry>
                 <box size="${wheelbase} ${rear_track * 0.6} ${platform_height}"/>
+            </geometry>
+            <material name="white"/>
+        </visual> -->
+         <visual>
+            <origin xyz="0 ${-0.145/2} -0.005" rpy="0 0 0"/>
+             <geometry>
+                <mesh filename="file://$(find ugv_description)/models/platform_deck.STL"/>
+            </geometry>
+            <material name="white"/>
+        </visual>
+        <visual>
+            <origin xyz="0.10835 0.0485 0" rpy="${pi/2} 0 0"/>
+             <geometry>
+                <mesh filename="file://$(find ugv_description)/models/platform_for_jetson_orin_nano_nx_dev_kit.STL"/>
+            </geometry>
+            <material name="white"/>
+        </visual>
+        <visual>
+            <origin xyz="0.112825 -0.036925 0.005" rpy="0 0 0"/>
+             <geometry>
+                <mesh filename="file://$(find ugv_description)/models/jetson_orin_nano_dev_kit.STL"/>
+            </geometry>
+            <material name="white"/>
+        </visual>
+        <visual>
+            <origin xyz="-0.095 ${0.153/2} -0.02" rpy="${pi/2} 0 0"/>
+             <geometry>
+                <mesh filename="file://$(find ugv_description)/models/rear_spoiler.STL"/>
             </geometry>
             <material name="white"/>
         </visual>
@@ -13,17 +41,33 @@
     <joint name="hat_link_joint" type="fixed">
         <parent link="base_link"/>
         <child link="platform_link"/>
-        <origin xyz="0 0 0.05" rpy="0 0 0"/>
+        <origin xyz="${(-wheelbase / 2)+0.005} 0 ${0.085 - wheel_radius}" rpy="0 0 0"/>
     </joint>
+
+
 
     <!-- LIDAR SENSOR -->
     <!-- Hokuyo UST-10LX (Perception is at 47.4 mm from base)-->
     <xacro:property name="ust_10lx_perception_height" value="0.0474" />
     <link name="lidar_1_link">
-        <visual>
+        <!-- <visual>
             <origin xyz="0 0 ${(0.07/2) - ust_10lx_perception_height}" rpy="0 0 0"/>
             <geometry>
                 <cylinder radius="0.025" length="0.07"/>
+            </geometry>
+            <material name="orange"/>
+        </visual> -->
+        <visual>
+            <origin xyz="${-0.025-0.008843159} ${-(0.04945/2)-0.000825} ${-ust_10lx_perception_height - 0.01}" rpy="${pi/2} 0 ${pi/2}"/>
+            <geometry>
+                <mesh filename="file://$(find ugv_description)/models/hokuyo_ust_10lx_20lx.STL"/>
+            </geometry>
+            <material name="orange"/>
+        </visual>
+        <visual>
+            <origin xyz="${-0.056/2} ${0.056/2} ${-ust_10lx_perception_height-0.01}" rpy="${pi/2} 0 0"/>
+            <geometry>
+                <mesh filename="file://$(find ugv_description)/models/platform_for_ust_10lx.STL"/>
             </geometry>
             <material name="orange"/>
         </visual>
@@ -31,17 +75,25 @@
     <joint name="lidar_1_link_joint" type="fixed">
         <parent link="platform_link"/>
         <child link="lidar_1_link"/>
-        <origin xyz="0.12 0 ${ust_10lx_perception_height + 0}" rpy="0 0 0"/>
+        <origin xyz="0.27 0 ${ust_10lx_perception_height + 0.01}" rpy="0 0 0"/>
     </joint>
     
+
 
     <!-- IMU SENSOR -->
     <!-- VESC 6 MKVI -->
     <link name="imu_1_link">
-        <visual>
+        <!-- <visual>
             <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
                 <box size="0.07 0.075 0.017"/>
+            </geometry>
+            <material name="orange"/>
+        </visual> -->
+        <visual>
+            <origin xyz="${0.07/2} ${-0.015 - 0.075/2} 0" rpy="0 0 ${pi/2}"/>
+            <geometry>
+                <mesh filename="file://$(find ugv_description)/models/vesc6.STL"/>
             </geometry>
             <material name="orange"/>
         </visual>
@@ -49,17 +101,25 @@
     <joint name="imu_1_link_joint" type="fixed">
         <parent link="platform_link"/>
         <child link="imu_1_link"/>
-        <origin xyz="-0.1 0 0.01428" rpy="0 0 0"/>
+        <origin xyz="0.055 -0.00575 0.0" rpy="0 0 0"/>
     </joint>
+
 
 
     <!-- CAMERA SENSOR -->
     <!-- Logitech C920 -->
     <link name="camera_1_link">
-        <visual>
+        <!-- <visual>
             <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
                 <box size="0.02412 0.09333 0.02886"/>
+            </geometry>
+            <material name="orange"/>
+        </visual> -->
+        <visual>
+            <origin xyz="0.1 0.047 -0.02898" rpy="${pi/2} 0 ${-pi/2}"/>
+            <geometry>
+                <mesh filename="file://$(find ugv_description)/models/logitech_c920_webcam.STL"/>
             </geometry>
             <material name="orange"/>
         </visual>
@@ -67,7 +127,7 @@
     <joint name="camera_1_link_joint" type="fixed">
         <parent link="platform_link"/>
         <child link="camera_1_link"/>
-        <origin xyz="0.08 0 0.085" rpy="0 0 0"/>
+        <origin xyz="0.27 0 0.115" rpy="0 0 0"/>
     </joint>
     <!-- REP-103 convention -->
     <link name="camera_optical_1_link"/>
@@ -76,5 +136,6 @@
         <child link="camera_optical_1_link"/>
         <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
     </joint>
+
 
 </robot>
