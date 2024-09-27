@@ -11,7 +11,7 @@ LIST_GIT_REPO=(     # List of git repositories to be cloned ("Git URL" "Commit I
     # "https://github.com/YDLIDAR/ydlidar_ros2_driver.git 91e86db0d0197ffa6bd28f817b2b09756beff0a6" # humble branch
 
     # LDS01 LiDAR
-    "https://github.com/ROBOTIS-GIT/hls_lfcd_lds_driver.git ebf3ff75bbaa26edde1a24b855867e5e32d09c00"   # humble-devel branch
+    # "https://github.com/ROBOTIS-GIT/hls_lfcd_lds_driver.git ebf3ff75bbaa26edde1a24b855867e5e32d09c00"   # humble-devel branch
 
 )
 
