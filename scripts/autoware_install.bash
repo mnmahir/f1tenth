@@ -1,5 +1,5 @@
 #!/bin/bash
-PKG_WS_PATH=$WS_PROJECT_REPO/pkg/_others
+PKG_WS_PATH=$WS_PROJECT_REPO/pkg/_autoware
 AUTOWARE_PATH=$PKG_WS_PATH/src/autoware
 
 # Dependencies
