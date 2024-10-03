@@ -1,19 +1,25 @@
 urg_node:
   ros__parameters:
-    angle_max: 3.14
-    angle_min: -3.14
     ip_address: "192.168.0.10"
     ip_port: 10940
     # serial_port: "/dev/sensors/hokuyo"
     serial_baud: 115200
     laser_frame_id: "lidar_1_link"
+
+    get_detailed_status: false  # Set to false. Not supported by UST-10LX
+    publish_intensity: true
+    publish_multiecho: false  # Set to false. Not supported by UST-10LX
+
+    angle_max: 3.14
+    angle_min: -3.14
     calibrate_time: false
+    cluster: 1
     default_user_latency: 0.0
+    error_limit: 4
+    skip: 0
+
+    diagnostic_updater:
+      period: 1.0
+      use_fqn: false
     diagnostics_tolerance: 0.05
     diagnostics_window_time: 5.0
-    error_limit: 4
-    get_detailed_status: false
-    publish_intensity: false
-    publish_multiecho: false
-    cluster: 1
-    skip: 0

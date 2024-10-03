@@ -11,11 +11,11 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     robot_bringup_node = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([os.path.join(get_package_share_directory('ugv_bringup'), 'launch', 'robot_bringup_launch.py')]),
+        PythonLaunchDescriptionSource([os.path.join(get_package_share_directory('ugv_bringup'), 'launch', 'components', 'robot_bringup_launch.py')]),
     )
     
     sensor_bringup_node = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([os.path.join(get_package_share_directory('ugv_bringup'), 'launch', 'sensor_bringup_launch.py')]),
+        PythonLaunchDescriptionSource([os.path.join(get_package_share_directory('ugv_bringup'), 'launch', 'components', 'sensor_bringup_launch.py')]),
     )
 
 
