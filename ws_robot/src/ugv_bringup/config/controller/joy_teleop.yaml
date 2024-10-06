@@ -2,7 +2,7 @@ joy:
   ros__parameters:
     # device_name: /dev/input/joypad-f710
     device_id: 0
-    deadzone: 0.01          # Output is zero for axis in deadzone. Range: [-0.9, 0.9]. Default 0.05
+    deadzone: 0.1          # Output is zero for axis in deadzone. Range: [-0.9, 0.9]. Default 0.05
     autorepeat_rate: 20.0   # If no events, repeats last known state at this rate. Defualt: 0 (disabled)
     coalesce_interval: 0.001 # Waits for this interval (seconds) after receiving an event. If multiple events happen in this interval, only one message will be sent. Reduces number of messages. Default: 0.001.
 
@@ -11,7 +11,7 @@ joy_teleop:
     default:
       type: topic
       interface_type: ackermann_msgs/msg/AckermannDriveStamped
-      topic_name: teleop
+      topic_name: cmd_teleop/joy
       axis_mappings:
         drive-speed:
           axis: 1
@@ -22,10 +22,10 @@ joy_teleop:
           scale: 0.0
           offset: 0.0
 
-    human_control:
+    joy_control:
       type: topic
       interface_type: ackermann_msgs/msg/AckermannDriveStamped
-      topic_name: teleop
+      topic_name: cmd_teleop/joy
       deadman_buttons: [6]
       axis_mappings:
         drive-speed:
@@ -37,11 +37,76 @@ joy_teleop:
           scale: 0.4
           offset: 0.0
 
-    autonomous_control:
+    joy_control_auto_test:
       type: topic
-      interface_type: std_msgs/msg/Int8
-      topic_name: /dev/null
+      interface_type: ackermann_msgs/msg/AckermannDriveStamped
+      topic_name: cmd_auto/joy
+      deadman_buttons: [3]
+      axis_mappings:
+        drive-speed:
+          axis: 1
+          scale: 5.0
+          offset: 0.0
+        drive-steering_angle:
+          axis: 2
+          scale: 0.4
+          offset: 0.0
+    
+    # gradual_braking:
+    #   type: topic
+    #   interface_type: std_msgs/msg/Float64
+    #   topic_name: commands/motor/brake
+    #   axis_mappings:
+    #     data:
+    #       axis: 4
+    #       scale: -5.0
+    #       offset: 5.0
+
+    teleop_cutoff_and_brake_enabler:
+      type: topic
+      interface_type: std_msgs/msg/Bool
+      topic_name: mux_bool/teleop_cutoff_and_brake
       deadman_buttons: [7]
       message_value:
         data:
-          value: 0
+          value: True
+
+    teleop_cutoff_and_brake_disabler:
+      type: topic
+      interface_type: std_msgs/msg/Bool
+      topic_name: mux_bool/teleop_cutoff_and_brake
+      deadman_buttons: [6]
+      message_value:
+        data:
+          value: False
+
+    autonomous_cutoff_and_brake_enabler:
+      type: topic
+      interface_type: std_msgs/msg/Bool
+      topic_name: mux_bool/autonomous_cutoff_and_brake
+      deadman_buttons: [7]
+      message_value:
+        data:
+          value: True
+
+    autonomous_cutoff_and_brake_disabler:
+      type: topic
+      interface_type: std_msgs/msg/Bool
+      topic_name: mux_bool/autonomous_cutoff_and_brake
+      deadman_buttons: [6]
+      message_value:
+        data:
+          value: False
+
+    
+
+    
+
+    # autonomous_control:
+    #   type: topic
+    #   interface_type: std_msgs/msg/Int8
+    #   topic_name: /dev/null
+    #   deadman_buttons: [7]
+    #   message_value:
+    #     data:
+    #       value: 0

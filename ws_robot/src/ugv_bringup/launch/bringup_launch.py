@@ -2,10 +2,8 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription
+from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration, Command
-from launch_ros.actions import Node
 
 
 
@@ -16,6 +14,10 @@ def generate_launch_description():
     
     sensor_bringup_node = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([os.path.join(get_package_share_directory('ugv_bringup'), 'launch', 'components', 'sensor_bringup_launch.py')]),
+    )
+    
+    safety_bringup_node = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([os.path.join(get_package_share_directory('ugv_bringup'), 'launch', 'components', 'safety_bringup_launch.py')]),
     )
 
 
@@ -28,5 +30,6 @@ def generate_launch_description():
     return LaunchDescription([       
             robot_bringup_node,
             sensor_bringup_node,
+            safety_bringup_node,
         ]
     )

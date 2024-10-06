@@ -1,11 +1,29 @@
 ackermann_mux:
   ros__parameters:
     topics:
-      navigation:
-        topic   : drive
+      auto_drive:
+        topic   : cmd_auto/drive
         timeout : 0.2
         priority: 10
-      joystick:
-        topic   : teleop
+      auto_safety:
+        topic   : cmd_auto/safety
         timeout : 0.2
-        priority: 100
+        priority: 50
+      auto_joystick_test:
+        topic   : cmd_auto/joy
+        timeout : 0.2
+        priority: 90
+      teleop_joystick:
+        topic   : cmd_teleop/joy
+        timeout : 0.2
+        priority: 190
+
+    locks:
+      autonomous_cutoff_and_brake:
+        topic   : mux_bool/autonomous_cutoff_and_brake  # Default is True. When True, teleop will be disabled and brake will be enabled.
+        timeout : 0.0   # 0.0 for no timeout and will be locked until the topic is true
+        priority: 100   # Same or higher priority will not be locked
+      teleop_cutoff_and_brake:
+        topic   : mux_bool/teleop_cutoff_and_brake # Default is True. When True, teleop will be disabled and brake will be enabled.
+        timeout : 0.0   # 0.0 for no timeout and will be locked until the topic is true
+        priority: 200   # Same or higher priority will not be locked
