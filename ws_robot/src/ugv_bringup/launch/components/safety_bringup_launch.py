@@ -19,6 +19,7 @@ def generate_launch_description():
         name='autonomous_safety_brake',
         parameters=[
             {'braking_current': -60.0},
+            {'ittc_threshold': 0.4},
             ],
     )
 
