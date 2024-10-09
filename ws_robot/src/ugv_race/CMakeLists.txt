@@ -48,6 +48,12 @@ install(PROGRAMS
 )
 
 
+install(DIRECTORY
+  maps
+  DESTINATION share/${PROJECT_NAME}/
+)
+
+
 
 ###=== TEST ===###
 if(BUILD_TESTING)

@@ -8,16 +8,16 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 
 
 def generate_launch_description():
-    robot_bringup_node = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([os.path.join(get_package_share_directory('ugv_bringup'), 'launch', 'components', 'robot_bringup_launch.py')]),
+    robot_nodes = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([os.path.join(get_package_share_directory('ugv_bringup'), 'launch', 'components', 'robot_launch.py')]),
     )
     
-    sensor_bringup_node = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([os.path.join(get_package_share_directory('ugv_bringup'), 'launch', 'components', 'sensor_bringup_launch.py')]),
+    sensor_nodes = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([os.path.join(get_package_share_directory('ugv_bringup'), 'launch', 'components', 'sensor_launch.py')]),
     )
     
-    safety_bringup_node = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([os.path.join(get_package_share_directory('ugv_bringup'), 'launch', 'components', 'safety_bringup_launch.py')]),
+    safety_nodes = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([os.path.join(get_package_share_directory('ugv_bringup'), 'launch', 'components', 'safety_launch.py')]),
     )
 
 
@@ -28,8 +28,8 @@ def generate_launch_description():
 
 
     return LaunchDescription([       
-            robot_bringup_node,
-            sensor_bringup_node,
-            safety_bringup_node,
+            robot_nodes,
+            sensor_nodes,
+            safety_nodes,
         ]
     )
