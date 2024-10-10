@@ -1,21 +1,25 @@
 ackermann_mux:
   ros__parameters:
     topics:
+      default:
+          topic   : cmd_auto/default
+          timeout : 0.1
+          priority: 1
       auto_drive:
         topic   : cmd_auto/drive
-        timeout : 0.2
+        timeout : 0.1
         priority: 10
       auto_safety:
         topic   : cmd_auto/safety
-        timeout : 0.2
+        timeout : 0.1
         priority: 50
       auto_joystick_test:
         topic   : cmd_auto/joy
-        timeout : 0.2
+        timeout : 0.1
         priority: 90
       teleop_joystick:
         topic   : cmd_teleop/joy
-        timeout : 0.2
+        timeout : 0.1
         priority: 190
 
     locks:

@@ -11,7 +11,7 @@ joy_teleop:
     default:
       type: topic
       interface_type: ackermann_msgs/msg/AckermannDriveStamped
-      topic_name: cmd_teleop/joy
+      topic_name: cmd_auto/default
       axis_mappings:
         drive-speed:
           axis: 1
@@ -98,15 +98,11 @@ joy_teleop:
         data:
           value: False
 
-    
-
-    
-
     # autonomous_control:
     #   type: topic
     #   interface_type: std_msgs/msg/Int8
     #   topic_name: /dev/null
-    #   deadman_buttons: [7]
+    #   deadman_buttons: [0]
     #   message_value:
     #     data:
     #       value: 0
