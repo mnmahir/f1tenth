@@ -10,6 +10,9 @@ LIST_GIT_REPO=(     # List of git repositories to be cloned ("Git URL" "Commit I
     # LDS01 LiDAR
     # "https://github.com/ROBOTIS-GIT/hls_lfcd_lds_driver.git ebf3ff75bbaa26edde1a24b855867e5e32d09c00"   # humble-devel branch
 
+    # HOKUYO LiDAR
+    "https://github.com/Hokuyo-aut/urg_node2.git "
+
 )
 
 

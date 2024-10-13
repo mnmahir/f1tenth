@@ -1,25 +1,18 @@
-urg_node:
+urg_node2:
   ros__parameters:
-    ip_address: "192.168.0.10"
-    ip_port: 10940
-    # serial_port: "/dev/sensors/hokuyo"
-    serial_baud: 115200
-    laser_frame_id: "lidar_1_link"
-
-    get_detailed_status: false  # Set to false. Not supported by UST-10LX
-    publish_intensity: true
-    publish_multiecho: false  # Set to false. Not supported by UST-10LX
-
-    angle_max: 3.14
-    angle_min: -3.14
-    calibrate_time: false
-    cluster: 1
-    default_user_latency: 0.0
-    error_limit: 4
-    skip: 0
-
-    diagnostic_updater:
-      period: 1.0
-      use_fqn: false
-    diagnostics_tolerance: 0.05
-    diagnostics_window_time: 5.0
+    ip_address: '192.168.0.10'      # ('')IP address for Ethernet connection（Specify in the format "XX.XX.XX.XX.XX". If the specified string is empty, a serial connection is selected
+    ip_port: 10940                  # (10940) Port number for Ethernet connection
+    frame_id : 'lidar_1_link'       # ('laser') Frame_id of scanning data The parameter frame_id is set in the message header "frame_id" of the scan data.
+    calibrate_time : false          # (false) Adjustment mode flags If this flag is true, the discrepancy between the LiDAR time and the system time is measured at the start of the scan and added to the timestamp of the scan data as latency.
+    synchronize_time : false        # (false) Synchronous mode flags If this flag is true, the system time, which is the reference for the timestamp of the scan data, is dynamically corrected using the discrepancy from the LiDAR time.
+    publish_intensity : true        # (false) Intensity output mode flag If this flag is true, the intensity data of the scan data is output; if false, the intensity data is output empty. If LiDAR does not support intensity output, it works the same as the false setting.
+    publish_multiecho : false       # (false) Not supported by UST-10LX. Multi-echo mode flag If this flag is true, multi-echo scan data (/echoes, /first, /last, /most_intense) is output; if false, scan data (/scan) is output. If LiDAR does not support multi-echo, it works the same as the false setting.
+    error_limit : 4                 # (4)(count) Number of errors to perform reconnection Reconnects the connection with LiDAR when the number of errors that occurred during data acquisition becomes larger than error_limit.
+    error_reset_period : 5.0        # (5.0)(s) Error reset cycle Periodically resets the number of errors that occurred during data acquisition. To prevent reconnection in case of sporadic errors
+    diagnostics_tolerance : 0.05    # (0.05) Allowable percentage of diagnostic information on frequency of scan data delivery relative to target delivery frequency. For example, if diagnostics_tolerance is 0.05, the normal range is 105% to 95% of the target delivery frequency.
+    diagnostics_window_time : 5.0   # (5.0)(s) Period to measure the frequency of output delivery of diagnostic information on the frequency of scan data delivery.
+    time_offset : 0.0               # (0.0)(s) User latency to be added to timestamp of scan data
+    angle_min : -2.15                 # (-pi)(rad)(-pi~pi) Minimum angle of scan data output range
+    angle_max : 2.15                  # (pi)(rad)(-pi~pi) Maximum angle of scan data output range
+    skip : 0                        # (0)(0~9) Output thinning setting for scanned data. The frequency of scanned data delivery is multiplied by 1/(skip+1).
+    cluster : 1                     # (1)(1~99) Scan data grouping settings The number of data in the scan data is multiplied by 1/cluster.
