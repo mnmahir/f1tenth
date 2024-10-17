@@ -36,11 +36,15 @@ ament_target_dependencies(cmd_vel_to_ackermann rclcpp geometry_msgs ackermann_ms
 add_executable(modified_cmd_ackermann src/modified_cmd_ackermann.cpp)
 ament_target_dependencies(modified_cmd_ackermann rclcpp ackermann_msgs)
 
+add_executable(safety_brake src/safety_brake.cpp)
+ament_target_dependencies(safety_brake rclcpp sensor_msgs nav_msgs std_msgs ackermann_msgs geometry_msgs)
+
 # Install CPP executables
 install(TARGETS
   cutoff_and_brake_control
   cmd_vel_to_ackermann
   modified_cmd_ackermann
+  safety_brake
   DESTINATION lib/${PROJECT_NAME})
 
 
