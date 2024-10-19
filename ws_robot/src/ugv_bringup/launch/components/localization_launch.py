@@ -11,7 +11,8 @@ import os
 
 def generate_launch_description():
     amcl_params_file_path = os.path.join(get_package_share_directory('ugv_bringup'), 'config', 'localization', 'amcl.yaml')
-    map_yaml_file_path = os.path.join(get_package_share_directory('ugv_race'), 'maps', 'hijau', 'map.yaml')
+    map_yaml_file_path = os.path.join(get_package_share_directory('ugv_race'), 'maps', 'hijau_v2', 'map.yaml')
+    ekf_yaml_file_path = os.path.join(get_package_share_directory('ugv_bringup'), 'config', 'localization', 'ekf.yaml')
 
     stdout_linebuf_envvar =         SetEnvironmentVariable('RCUTILS_LOGGING_BUFFERED_STREAM', '1')
     declare_namespace_cmd =         DeclareLaunchArgument('namespace',          default_value='',                           description='Top-level namespace')
@@ -23,6 +24,7 @@ def generate_launch_description():
     declare_container_name_cmd =    DeclareLaunchArgument('container_name',     default_value='nav2_container', description='the name of conatiner that nodes will load in if use composition')
     declare_use_respawn_cmd =       DeclareLaunchArgument('use_respawn',        default_value='False',          description='Whether to respawn if a node crashes. Applied when composition is disabled.')
     declare_log_level_cmd =         DeclareLaunchArgument('log_level',          default_value='info',           description='log level')
+    declare_ekf_params_file_cmd =   DeclareLaunchArgument('ekf_params_file',    default_value=ekf_yaml_file_path, description='Full path to the ROS2 parameters file to use for all launched nodes')
 
     namespace = LaunchConfiguration('namespace')
     map_yaml_file = LaunchConfiguration('map')
@@ -34,11 +36,21 @@ def generate_launch_description():
     container_name_full = (namespace, '/', container_name)
     use_respawn = LaunchConfiguration('use_respawn')
     log_level = LaunchConfiguration('log_level')
+    ekf_params_file = LaunchConfiguration('ekf_params_file')
     
     
     lifecycle_nodes = ['map_server', 'amcl']
     remappings = [('/tf', 'tf'),
                   ('/tf_static', 'tf_static')]
+    
+    ekf_node = Node(
+        package='robot_localization',
+        executable='ekf_node',
+        name='ekf_filter_node',
+        output='screen',
+        parameters=[ekf_params_file],
+        remappings=[('/odometry/filtered', '/odom/filtered')]
+    )
     
     load_nodes = GroupAction(
         condition=IfCondition(PythonExpression(['not ', use_composition])),
@@ -127,8 +139,10 @@ def generate_launch_description():
     ld.add_action(declare_container_name_cmd)
     ld.add_action(declare_use_respawn_cmd)
     ld.add_action(declare_log_level_cmd)
+    ld.add_action(declare_ekf_params_file_cmd)
 
     # Add the actions to launch all of the localiztion nodes
+    # ld.add_action(ekf_node)
     ld.add_action(load_nodes)
     ld.add_action(load_composable_nodes)
 

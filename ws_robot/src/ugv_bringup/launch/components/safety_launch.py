@@ -20,6 +20,7 @@ def generate_launch_description():
         parameters=[
             {'braking_current': -60.0},
             {'ittc_threshold': 0.4},
+            {'odom_topic': '/odom/wheel'},
             ],
     )
 

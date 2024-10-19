@@ -43,7 +43,8 @@ def generate_launch_description():
         package='vesc_ackermann',
         executable='vesc_to_odom_node',
         name='vesc_to_odom_node',
-        parameters=[LaunchConfiguration('vesc_config')]
+        parameters=[LaunchConfiguration('vesc_config')],
+        remappings=[('/odom', '/odom/wheel')]
     )
     
     vesc_driver_node = Node(
