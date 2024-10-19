@@ -15,7 +15,7 @@ def generate_launch_description():
     
     autonomous_safety_brake_node = Node(
         package='ugv_race',
-        executable='safety_brake.py',
+        executable='safety_brake',
         name='autonomous_safety_brake',
         parameters=[
             {'braking_current': -60.0},

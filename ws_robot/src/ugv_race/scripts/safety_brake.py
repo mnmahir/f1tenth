@@ -12,8 +12,6 @@ from std_msgs.msg import Float64, Bool
 from ackermann_msgs.msg import AckermannDriveStamped
 from geometry_msgs.msg import PolygonStamped, Point32
 
-
-
 class SafetyNode(Node):
     def __init__(self):
         super().__init__('safety_node')
@@ -29,7 +27,6 @@ class SafetyNode(Node):
         self.declare_parameter('bool_publisher_topic', "/mux_bool/autonomous_cutoff_and_brake")
         self.declare_parameter('bypass_teleop_topic', "/joy")
         self.declare_parameter('bypass_teleop_button', 6)
-        
         
         # Publisher
         self.brake_pub = self.create_publisher(Float64, self.get_parameter('brake_publisher_topic').value, 10)
@@ -63,15 +60,14 @@ class SafetyNode(Node):
         self.toggle_emergency_brake = False
         self.ittc = np.inf
         self.ittc_idx = 0
-        
-        
+        self.scan_frame_id = ""
+
         self._logger.info(f"Safety node started. ")
         self._logger.info(f"Maximum braking current: {self.braking_current} A")
 
-
     def publish_force_stop_boundary(self):
         polygon = PolygonStamped()
-        polygon.header.frame_id = "lidar_1_link"  # Adjust the frame as needed
+        polygon.header.frame_id = self.scan_frame_id  # Fetch the frame_id from scan
         polygon.header.stamp = self.get_clock().now().to_msg()
 
         # Define the rectangular region points
@@ -91,7 +87,7 @@ class SafetyNode(Node):
         
     def publish_ittc_foward_drive_scan_boundary(self):
         polygon = PolygonStamped()
-        polygon.header.frame_id = "lidar_1_link"  # Adjust the frame as needed
+        polygon.header.frame_id = self.scan_frame_id  # Fetch the frame_id from scan
         polygon.header.stamp = self.get_clock().now().to_msg()
         
         # Define the rectangular region points
@@ -115,8 +111,6 @@ class SafetyNode(Node):
             
         self.force_ittc_stop_boundary_pub.publish(polygon)
     
-    
-    
     def apply_emergency_brake(self):
         if not self.toggle_emergency_brake:
             self.toggle_emergency_brake = True
@@ -131,7 +125,6 @@ class SafetyNode(Node):
         self.safe_pub.publish(Bool(data=False))
         self._logger.info("Emergency brake released.")
         
-    
     def compute_ittc(self, ray_range, ray_angle):
         r_dot = np.cos(ray_angle) * self.speed  # Calculate range rate (using vehicle's current longitudinal velocity)
         r_dot[r_dot < 1e-3] = 0 # Set small r_dot value to and value less than 0 to 0
@@ -151,8 +144,10 @@ class SafetyNode(Node):
         self.steering_angle = ackermann_msg.drive.steering_angle  # current steering angle of the vehicle
         self.publish_ittc_foward_drive_scan_boundary()
             
-
     def scan_callback(self, scan_msg):
+        # Store the frame_id from the scan message
+        self.scan_frame_id = scan_msg.header.frame_id
+
         # Extract the range and angle of each ray
         ray_range = np.array(scan_msg.ranges)
         ray_angle = np.linspace(scan_msg.angle_min, scan_msg.angle_max, len(ray_range))
@@ -190,8 +185,6 @@ class SafetyNode(Node):
                 self.release_emergency_brake()          
             else:
                 return
-            
-        
 
 def main(args=None):
     rclpy.init(args=args)
@@ -203,7 +196,6 @@ def main(args=None):
     # when the garbage collector destroys the node object)
     safety_node.destroy_node()
     rclpy.shutdown()
-
 
 if __name__ == '__main__':
     main()
