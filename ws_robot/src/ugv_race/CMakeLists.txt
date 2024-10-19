@@ -39,15 +39,24 @@ ament_target_dependencies(cmd_vel_to_ackermann rclcpp geometry_msgs ackermann_ms
 add_executable(modified_cmd_ackermann src/modified_cmd_ackermann.cpp)
 ament_target_dependencies(modified_cmd_ackermann rclcpp ackermann_msgs)
 
+<<<<<<< HEAD
 add_executable(transform_to_odom src/transform_to_odom.cpp)
 ament_target_dependencies(transform_to_odom rclcpp ackermann_msgs tf2_ros tf2_geometry_msgs nav_msgs)
+=======
+add_executable(safety_brake src/safety_brake.cpp)
+ament_target_dependencies(safety_brake rclcpp sensor_msgs nav_msgs std_msgs ackermann_msgs geometry_msgs)
+>>>>>>> b5766f78bc1afe1f506d1c0c3974e32e8f9cd8ce
 
 # Install CPP executables
 install(TARGETS
   cutoff_and_brake_control
   cmd_vel_to_ackermann
   modified_cmd_ackermann
+<<<<<<< HEAD
   transform_to_odom
+=======
+  safety_brake
+>>>>>>> b5766f78bc1afe1f506d1c0c3974e32e8f9cd8ce
   DESTINATION lib/${PROJECT_NAME})
 
 
