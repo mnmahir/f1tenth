@@ -21,8 +21,13 @@ public:
         this->declare_parameter("ittc_threshold", 0.2);
         this->declare_parameter("ittc_foward_drive_scan_width", 0.3);
         this->declare_parameter("ittc_foward_drive_x_scan_offset", -0.3);
+        this->declare_parameter("ittc_brake_release_delay", 500);
         this->declare_parameter("force_stop_rectangular_region", std::vector<double>{0.0, 0.16, -0.14, 0.14});
         this->declare_parameter("force_stop_min_ray", 5);
+        this->declare_parameter("enable_recovery", false);
+        this->declare_parameter("recovery_timeout", 3000);
+        this->declare_parameter("recovery_backup_speed", -1.0);
+        this->declare_parameter("recovery_backup_duration", 1000);  
         this->declare_parameter("braking_current", -10.0);
         this->declare_parameter("scan_topic", "/scan");
         this->declare_parameter("odom_topic", "/odom");
@@ -34,17 +39,14 @@ public:
         // Initialize publishers
         brake_pub_ = this->create_publisher<std_msgs::msg::Float64>(this->get_parameter("brake_publisher_topic").as_string(), 10);
         safe_pub_ = this->create_publisher<std_msgs::msg::Bool>(this->get_parameter("bool_publisher_topic").as_string(), 10);
+        cmd_ackermann_pub_ = this->create_publisher<ackermann_msgs::msg::AckermannDriveStamped>("/cmd_auto/recovery", 10);  
         force_stop_boundary_pub_ = this->create_publisher<geometry_msgs::msg::PolygonStamped>("/safety/force_stop_boundary", 10);
         force_ittc_stop_boundary_pub_ = this->create_publisher<geometry_msgs::msg::PolygonStamped>("/safety/ittc_stop_boundary", 10);
 
         // Initialize subscribers
         scan_sub_ = this->create_subscription<sensor_msgs::msg::LaserScan>(this->get_parameter("scan_topic").as_string(), 10, std::bind(&SafetyNode::scan_callback, this, std::placeholders::_1));
         odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(this->get_parameter("odom_topic").as_string(), 10, std::bind(&SafetyNode::odom_callback, this, std::placeholders::_1));
-        cmd_ackermann_sub_ = this->create_subscription<ackermann_msgs::msg::AckermannDriveStamped>("/ackermann_cmd", 10, std::bind(&SafetyNode::cmd_ackermann_callback, this, std::placeholders::_1));
         bypass_teleop_sub_ = this->create_subscription<sensor_msgs::msg::Joy>(this->get_parameter("bypass_teleop_topic").as_string(), 10, std::bind(&SafetyNode::bypass_teleop_callback, this, std::placeholders::_1));
-
-        // Timed publisher
-        timer_ = this->create_wall_timer(1s, std::bind(&SafetyNode::publish_force_stop_boundary, this));
 
         // Initialize variables
         braking_current_ = this->get_parameter("braking_current").as_double();
@@ -58,6 +60,11 @@ public:
         bypass_teleop_button_ = this->get_parameter("bypass_teleop_button").as_int();
         ittc_foward_drive_scan_width_ = this->get_parameter("ittc_foward_drive_scan_width").as_double();
         ittc_foward_drive_x_scan_offset_ = this->get_parameter("ittc_foward_drive_x_scan_offset").as_double();
+        ittc_brake_release_delay_ = this->get_parameter("ittc_brake_release_delay").as_int();
+        enable_recovery_ = this->get_parameter("enable_recovery").as_bool();
+        recovery_timeout_ = this->get_parameter("recovery_timeout").as_int();
+        recovery_backup_speed_ = this->get_parameter("recovery_backup_speed").as_double();
+        recovery_backup_duration_ = this->get_parameter("recovery_backup_duration").as_int();
         bypass_teleop_state_ = false;
         speed_ = 0.0;
         steering_angle_ = 0.0;
@@ -65,9 +72,13 @@ public:
         ittc_ = std::numeric_limits<double>::infinity();
         ittc_idx_ = 0;
         scan_frame_id_ = "";
+        force_stop_start_time_ = this->get_clock()->now();
+        backup_recovery_in_progress_ = false;
 
         RCLCPP_INFO(this->get_logger(), "Safety node started.");
-        RCLCPP_INFO(this->get_logger(), "Maximum braking current: %f A", braking_current_);
+        RCLCPP_INFO(this->get_logger(), "Maximum braking current: \033[1;33m%.2f A", braking_current_);
+        RCLCPP_INFO(this->get_logger(), "iTTC brake release delay: \033[1;33m%d ms", static_cast<int>(ittc_brake_release_delay_));
+        RCLCPP_INFO(this->get_logger(), "Recovery mode: \033[1;33m%s", enable_recovery_ ? "enabled" : "disabled");
     }
 
 private:
@@ -96,14 +107,17 @@ private:
 
     void publish_ittc_foward_drive_scan_boundary() {
         auto polygon = geometry_msgs::msg::PolygonStamped();
-        polygon.header.frame_id = scan_frame_id_;
+        polygon.header.frame_id = scan_frame_id_;  // Fetch the frame_id from scan
         polygon.header.stamp = this->get_clock()->now();
 
+        // Define the rectangular region points
         std::vector<std::vector<double>> points = {
-            {ittc_foward_drive_x_scan_offset_, -(ittc_foward_drive_scan_width_ / 2) - std::abs((ittc_foward_drive_scan_width_ * steering_angle_)), 0.0},
-            {ittc_foward_drive_x_scan_offset_, (ittc_foward_drive_scan_width_ / 2) + std::abs((ittc_foward_drive_scan_width_ * steering_angle_)), 0.0},
-            {1.0, -(ittc_foward_drive_scan_width_ / 2) - std::abs((ittc_foward_drive_scan_width_ * steering_angle_)), 0.0},
-            {1.0, (ittc_foward_drive_scan_width_ / 2) + std::abs((ittc_foward_drive_scan_width_ * steering_angle_)), 0.0}
+            {ittc_foward_drive_x_scan_offset_, -(ittc_foward_drive_scan_width_ / 2), 0.0},
+            {ittc_foward_drive_x_scan_offset_, (ittc_foward_drive_scan_width_ / 2), 0.0},
+            {1.0, (ittc_foward_drive_scan_width_ / 2), 0.0},
+            {ittc_foward_drive_x_scan_offset_, (ittc_foward_drive_scan_width_ / 2), 0.0},
+            {ittc_foward_drive_x_scan_offset_, -(ittc_foward_drive_scan_width_ / 2), 0.0},
+            {1.0, -(ittc_foward_drive_scan_width_ / 2), 0.0}
         };
 
         for (const auto& point : points) {
@@ -120,7 +134,8 @@ private:
     void apply_emergency_brake() {
         if (!toggle_emergency_brake_) {
             toggle_emergency_brake_ = true;
-            RCLCPP_INFO(this->get_logger(), "Applying emergency brake...");
+            force_stop_start_time_ = this->get_clock()->now();
+            RCLCPP_INFO(this->get_logger(), "\033[1;31mApplying emergency brake...");
         }
         auto bool_msg = std_msgs::msg::Bool();
         bool_msg.data = true;
@@ -143,7 +158,7 @@ private:
         bool_msg.data = false;
         safe_pub_->publish(bool_msg);
 
-        RCLCPP_INFO(this->get_logger(), "Emergency brake released.");
+        RCLCPP_INFO(this->get_logger(), "\033[1;32mEmergency brake released.");
     }
 
     double compute_ittc(const std::vector<double>& ray_range, const std::vector<double>& ray_angle) {
@@ -171,6 +186,7 @@ private:
 
     void odom_callback(const nav_msgs::msg::Odometry::SharedPtr odom_msg) {
         speed_ = odom_msg->twist.twist.linear.x;
+        publish_force_stop_boundary();
     }
 
     void cmd_ackermann_callback(const ackermann_msgs::msg::AckermannDriveStamped::SharedPtr ackermann_msg) {
@@ -193,6 +209,7 @@ private:
             y[i] = ray_range[i] * std::sin(ray_angle[i]);
         }
 
+        // Check if any point is within the force stop rectangular region
         bool within_rect = false;
         for (size_t i = 0; i < x.size(); ++i) {
             if (fstop_rect_x_min_ <= x[i] && x[i] <= fstop_rect_x_max_ && fstop_rect_y_min_ <= y[i] && y[i] <= fstop_rect_y_max_) {
@@ -200,16 +217,24 @@ private:
                 break;
             }
         }
-
-        if (within_rect && !bypass_teleop_state_) {
+        
+        if (within_rect && !bypass_teleop_state_) {     // Check if an object is within the force stop rectangular region and teleop is not bypassed
             apply_emergency_brake();
-            RCLCPP_WARN(this->get_logger(), "An object is in the scan boundary! Vehicle force stopped. Use teleop to move the vehicle.");
-            std::this_thread::sleep_for(1s);
+            if (!enable_recovery_){
+                RCLCPP_INFO(this->get_logger(), "\033[1;31mAn object is in the force stop scan boundary! \033[1;33mUse teleop to move the vehicle.");
+                std::this_thread::sleep_for(1s);
+            } else {
+                RCLCPP_INFO(this->get_logger(), "\033[1;31mAn object is in the force stop scan boundary! \033[1;33mAttempting backup recovery...");
+                std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(recovery_timeout_)));
+                if ((this->get_clock()->now() - force_stop_start_time_).seconds() * 1000 > recovery_timeout_) {
+                    start_backup_recovery();
+                }
+            }
         } else {
             if (speed_ > 0) {
                 std::vector<double> filtered_ray_range, filtered_ray_angle;
                 for (size_t i = 0; i < ray_range.size(); ++i) {
-                    if (x[i] >= ittc_foward_drive_x_scan_offset_ && std::abs(y[i]) <= (ittc_foward_drive_scan_width_ / 2 + ittc_foward_drive_scan_width_ * std::abs(steering_angle_))) {
+                    if (x[i] >= ittc_foward_drive_x_scan_offset_ && std::abs(y[i]) <= (ittc_foward_drive_scan_width_ / 2)) {
                         filtered_ray_range.push_back(ray_range[i]);
                         filtered_ray_angle.push_back(ray_angle[i]);
                     }
@@ -231,22 +256,52 @@ private:
             compute_ittc(ray_range, ray_angle);
             if (ittc_ < ittc_threshold_ && !bypass_teleop_state_) {
                 apply_emergency_brake();
-                RCLCPP_WARN(this->get_logger(), "iTTC: %f s (< %f s) to object at %f° with approaching speed of %f m/s (%f m/s)", ittc_, ittc_threshold_, ray_angle[ittc_idx_] * 180 / M_PI, ray_range[ittc_idx_] / ittc_, speed_);
-                RCLCPP_WARN(this->get_logger(), "Emergency brake applied %f m before collision to object.", ray_range[ittc_idx_]);
-                std::this_thread::sleep_for(500ms);
+                RCLCPP_INFO(this->get_logger(), "iTTC: %.3f s (< %.3f s) to object at %.2f° with approaching speed of %.3f m/s (%.3f m/s)", ittc_, ittc_threshold_, ray_angle[ittc_idx_] * 180 / M_PI, ray_range[ittc_idx_] / ittc_, speed_);
+                RCLCPP_INFO(this->get_logger(), "Emergency brake applied %.3f m before collision to object.", ray_range[ittc_idx_]);
+                std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(ittc_brake_release_delay_)));  // 1000 milliseconds = 1 second;
             } else if (toggle_emergency_brake_) {
                 release_emergency_brake();
             }
         }
     }
 
+    void start_backup_recovery() {
+        if (!backup_recovery_in_progress_) {
+            backup_recovery_in_progress_ = true;
+            RCLCPP_INFO(this->get_logger(), "\033[1;33mStarting backup recovery...");
+
+            auto ackermann_msg = ackermann_msgs::msg::AckermannDriveStamped();
+            ackermann_msg.drive.speed = recovery_backup_speed_;
+
+            auto start_time = std::chrono::steady_clock::now();
+            auto end_time = start_time + std::chrono::milliseconds(static_cast<int>(recovery_backup_duration_));
+
+            while (std::chrono::steady_clock::now() < end_time) {
+                cmd_ackermann_pub_->publish(ackermann_msg);
+                std::this_thread::sleep_for(std::chrono::milliseconds(10)); // Adjust the sleep duration as needed
+            }
+
+            stop_backup_recovery();
+        }
+    }
+
+    void stop_backup_recovery() {
+        backup_recovery_in_progress_ = false;
+        RCLCPP_INFO(this->get_logger(), "\033[1;33mStopping backup recovery...");
+
+        // Publish stop command
+        auto ackermann_msg = ackermann_msgs::msg::AckermannDriveStamped();
+        ackermann_msg.drive.speed = 0.0;  // Stop the vehicle
+        cmd_ackermann_pub_->publish(ackermann_msg);
+    }
+
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr brake_pub_;
     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr safe_pub_;
+    rclcpp::Publisher<ackermann_msgs::msg::AckermannDriveStamped>::SharedPtr cmd_ackermann_pub_;
     rclcpp::Publisher<geometry_msgs::msg::PolygonStamped>::SharedPtr force_stop_boundary_pub_;
     rclcpp::Publisher<geometry_msgs::msg::PolygonStamped>::SharedPtr force_ittc_stop_boundary_pub_;
     rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scan_sub_;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
-    rclcpp::Subscription<ackermann_msgs::msg::AckermannDriveStamped>::SharedPtr cmd_ackermann_sub_;
     rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr bypass_teleop_sub_;
     rclcpp::TimerBase::SharedPtr timer_;
 
@@ -260,6 +315,11 @@ private:
     int bypass_teleop_button_;
     double ittc_foward_drive_scan_width_;
     double ittc_foward_drive_x_scan_offset_;
+    double ittc_brake_release_delay_;
+    double enable_recovery_;
+    double recovery_timeout_;
+    double recovery_backup_speed_;
+    int recovery_backup_duration_;
     bool bypass_teleop_state_;
     double speed_;
     double steering_angle_;
@@ -267,6 +327,8 @@ private:
     double ittc_;
     size_t ittc_idx_;
     std::string scan_frame_id_;
+    rclcpp::Time force_stop_start_time_;
+    bool backup_recovery_in_progress_;
 };
 
 int main(int argc, char *argv[]) {

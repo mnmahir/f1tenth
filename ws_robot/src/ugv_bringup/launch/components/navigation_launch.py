@@ -71,7 +71,7 @@ def generate_launch_description():
     
     # Nodes
     cmd_vel_to_ackermann = Node(         
-        package='ugv_race',
+        package='ugv_util',
         executable='cmd_vel_to_ackermann',
         name='cmd_vel_to_ackermann',
         output='screen',

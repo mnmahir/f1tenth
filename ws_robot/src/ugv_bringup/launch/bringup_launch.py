@@ -19,6 +19,10 @@ def generate_launch_description():
     safety_nodes = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([os.path.join(get_package_share_directory('ugv_bringup'), 'launch', 'components', 'safety_launch.py')]),
     )
+    
+    localization_nodes = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([os.path.join(get_package_share_directory('ugv_bringup'), 'launch', 'components', 'localization_launch.py')]),
+    )
 
 
     # test_node = ExecuteProcess(
@@ -31,5 +35,6 @@ def generate_launch_description():
             robot_nodes,
             sensor_nodes,
             safety_nodes,
+            # localization_nodes,
         ]
     )

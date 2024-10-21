@@ -1,6 +1,6 @@
 #!/bin/bash
 LIST_GIT_REPO=(     # List of git repositories to be cloned ("Git URL" "Commit ID/Tag/Branch"). Preferably use commit id / tag for reproducibility.
-    "https://github.com/mnmahir/vesc.git f8cca4ac073553f59443aea9a906ca31c05e65f6"  #forked from ros2 branch into f1tenth branch
+    "https://github.com/mnmahir/vesc.git f1tenth"  #forked from ros2 branch into f1tenth branch
     "https://github.com/ros-drivers/transport_drivers.git 9fff59f66e4e0f9296501b3f671adc6543509996" # main branch
 
     # YDLIDAR TEA & SDK
@@ -11,7 +11,7 @@ LIST_GIT_REPO=(     # List of git repositories to be cloned ("Git URL" "Commit I
     # "https://github.com/ROBOTIS-GIT/hls_lfcd_lds_driver.git ebf3ff75bbaa26edde1a24b855867e5e32d09c00"   # humble-devel branch
 
     # HOKUYO LiDAR
-    "https://github.com/Hokuyo-aut/urg_node2.git "
+    "https://github.com/Hokuyo-aut/urg_node2.git 11d02a97a7352af508400d03ed9b0b219a33f1ac"
 
 )
 

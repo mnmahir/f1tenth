@@ -18,7 +18,7 @@ export ROS_LOCALHOST_ONLY=0 #0 default behavior, attach dds to prefered interfac
 # ======= LOGGING =======
 export RCUTILS_COLORIZED_OUTPUT=1
 # export RCUTILS_CONSOLE_OUTPUT_FORMAT="[{severity}][{name}][{time}]: {message} ({function_name}() at {file_name}:{line_number})"
-# export RCUTILS_CONSOLE_OUTPUT_FORMAT="[{severity}][{name}][{time}]: {message}"
+export RCUTILS_CONSOLE_OUTPUT_FORMAT="[{severity}] [{time}]: {message}"
 
 
 # ======= GPU ACCELERATION ======= (If using "NVIDIA On-Demand" PRIME profile, uncomment below to run/offload GPU supported application. No need if using "NVIDIA Performance Mode".)

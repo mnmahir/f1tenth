@@ -9,10 +9,10 @@ ackermann_mux:
         topic   : cmd_auto/drive
         timeout : 0.1
         priority: 10
-      auto_safety:
-        topic   : cmd_auto/safety
-        timeout : 0.1
-        priority: 50
+      auto_recovery:
+        topic   : cmd_auto/recovery
+        timeout : 0.01
+        priority: 100
       auto_joystick_test:
         topic   : cmd_auto/joy
         timeout : 0.1

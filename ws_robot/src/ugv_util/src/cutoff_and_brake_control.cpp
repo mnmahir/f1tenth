@@ -44,7 +44,7 @@ private:
             if (!toggle_cb_)
             {
                 toggle_cb_ = true;
-                RCLCPP_INFO(this->get_logger(), "Cutoff and braking...");
+                RCLCPP_INFO(this->get_logger(), "\033[1;31mCutoff and braking...");
             }
             toggle_cb_ = true;
             auto bool_msg = std_msgs::msg::Bool();
@@ -65,7 +65,7 @@ private:
             auto bool_msg = std_msgs::msg::Bool();
             bool_msg.data = false;
             cb_pub_->publish(bool_msg);
-            RCLCPP_INFO(this->get_logger(), "Brake released.");
+            RCLCPP_INFO(this->get_logger(), "\033[1;32mBrake released.");
         }
     }
 

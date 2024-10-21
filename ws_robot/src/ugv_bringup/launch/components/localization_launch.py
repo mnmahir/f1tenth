@@ -39,7 +39,10 @@ def generate_launch_description():
     ekf_params_file = LaunchConfiguration('ekf_params_file')
     
     
-    lifecycle_nodes = ['map_server', 'amcl']
+    lifecycle_nodes = [
+        'map_server', 
+        'amcl'
+    ]
     remappings = [('/tf', 'tf'),
                   ('/tf_static', 'tf_static')]
     
@@ -50,6 +53,18 @@ def generate_launch_description():
         output='screen',
         parameters=[ekf_params_file],
         remappings=[('/odometry/filtered', '/odom/filtered')]
+    )
+    
+    base_footprint_to_map_odom_node = Node(
+        package='ugv_util',
+        executable='transform_to_odom',
+        name='base_footprint_to_map_odom',
+        output='screen',
+        parameters=[{'source_frame': 'base_footprint',
+                     'target_frame': 'map',
+                     'odom_topic' : 'odom/map',
+                     'rate': 50.0
+                     }],
     )
     
     load_nodes = GroupAction(
@@ -140,9 +155,10 @@ def generate_launch_description():
     ld.add_action(declare_use_respawn_cmd)
     ld.add_action(declare_log_level_cmd)
     ld.add_action(declare_ekf_params_file_cmd)
+    ld.add_action(base_footprint_to_map_odom_node)
 
     # Add the actions to launch all of the localiztion nodes
-    # ld.add_action(ekf_node)
+    ld.add_action(ekf_node)
     ld.add_action(load_nodes)
     ld.add_action(load_composable_nodes)
 

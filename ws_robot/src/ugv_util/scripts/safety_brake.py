@@ -41,7 +41,7 @@ class SafetyNode(Node):
         self.bypass_teleop_sub = self.create_subscription(Joy, self.get_parameter('bypass_teleop_topic').value, self.bypass_teleop_callback, 10)
         
         # Timed publisher
-        self.create_timer(1.0, self.publish_force_stop_boundary)
+        # self.create_timer(1.0, self.publish_force_stop_boundary)
         
         # Initialize variables
         self.braking_current = self.get_parameter('braking_current').value
@@ -139,6 +139,7 @@ class SafetyNode(Node):
         
     def odom_callback(self, odom_msg):
         self.speed = odom_msg.twist.twist.linear.x  # current speed of the vehicle
+        self.publish_force_stop_boundary()
         
     def cmd_ackermann_callback(self, ackermann_msg):
         self.steering_angle = ackermann_msg.drive.steering_angle  # current steering angle of the vehicle

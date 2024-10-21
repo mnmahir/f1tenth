@@ -23,6 +23,8 @@
     servo_min: 0.10
     servo_max: 0.90
 
+    imu_frame: imu_1_link
+
 # No longer needed, all parameters are shared
 # ackermann_to_vesc_node:
 #   ros__parameters:
@@ -32,7 +34,7 @@ vesc_to_odom_node:
     odom_frame: odom
     base_frame: base_footprint
     # publish odom to base link tf
-    publish_tf: true
+    publish_tf: false
     use_servo_cmd_to_calc_angular_velocity: true
     # wheelbase = 324mm (Traxxas Ford Fiesta ST Rally VXL)
     wheelbase: .324
