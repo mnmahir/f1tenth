@@ -224,8 +224,8 @@ private:
                 RCLCPP_INFO(this->get_logger(), "\033[1;31mAn object is in the force stop scan boundary! \033[1;33mUse teleop to move the vehicle.");
                 std::this_thread::sleep_for(1s);
             } else {
-                RCLCPP_INFO(this->get_logger(), "\033[1;31mAn object is in the force stop scan boundary! \033[1;33mAttempting backup recovery...");
-                std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(recovery_timeout_)));
+                RCLCPP_INFO(this->get_logger(), "\033[1;31mAn object is in the force stop scan boundary! \033[1;33mWill attempt backup recovery...");
+                std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(recovery_timeout_/5.0)));
                 if ((this->get_clock()->now() - force_stop_start_time_).seconds() * 1000 > recovery_timeout_) {
                     start_backup_recovery();
                 }

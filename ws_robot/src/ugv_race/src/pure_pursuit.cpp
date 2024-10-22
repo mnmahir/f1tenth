@@ -154,6 +154,14 @@ private:
         num_waypoints = waypoints.X.size();
         RCLCPP_INFO(this->get_logger(), "Finished loading %d waypoints from %s", num_waypoints, waypoints_path);
 
+        // reverse the order of waypoints
+        if (reverse_waypoints_order)
+        {
+            std::reverse(waypoints.X.begin(), waypoints.X.end());
+            std::reverse(waypoints.Y.begin(), waypoints.Y.end());
+            std::reverse(waypoints.V.begin(), waypoints.V.end());
+        }
+
         double average_dist_between_waypoints = 0.0;
         for (int i = 0; i < num_waypoints - 1; i++)
         {

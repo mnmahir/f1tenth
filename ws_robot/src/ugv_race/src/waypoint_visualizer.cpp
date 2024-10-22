@@ -97,7 +97,7 @@ private:
 
         csvFile_waypoints.close();
 
-        // Reverse the order of waypoints if the parameter is true
+        // reverse the order of waypoints
         if (reverse_waypoints_order)
         {
             std::reverse(waypoints.X.begin(), waypoints.X.end());
