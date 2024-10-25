@@ -20,6 +20,7 @@
                 <Peer Address="192.168.100.73"/>
                 <!-- Car wireless address -->
                 <Peer Address="192.168.100.80"/>
+                <Peer Address="192.168.210.98"/>
             </Peers>
         </Discovery>
         <Internal>
