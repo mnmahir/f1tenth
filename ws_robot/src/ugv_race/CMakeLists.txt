@@ -38,10 +38,18 @@ ament_target_dependencies(pure_pursuit geometry_msgs ackermann_msgs nav_msgs sen
 add_executable(waypoint_visualizer src/waypoint_visualizer.cpp)
 ament_target_dependencies(waypoint_visualizer rclcpp geometry_msgs visualization_msgs tf2_ros tf2_geometry_msgs) 
 
+add_executable(reactive_node src/reactive_node.cpp)
+ament_target_dependencies(reactive_node rclcpp geometry_msgs ackermann_msgs nav_msgs sensor_msgs std_msgs)
+
+add_executable(avoidance_controller src/avoidance_controller.cpp)
+ament_target_dependencies(avoidance_controller rclcpp geometry_msgs ackermann_msgs nav_msgs sensor_msgs std_msgs visualization_msgs tf2_ros tf2_geometry_msgs)
+
 # Install CPP executables
 install(TARGETS
   pure_pursuit
-  # waypoint_visualizer
+  waypoint_visualizer
+  reactive_node
+  avoidance_controller
   DESTINATION lib/${PROJECT_NAME})
 
 

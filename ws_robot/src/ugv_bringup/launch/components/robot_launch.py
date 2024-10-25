@@ -36,7 +36,8 @@ def generate_launch_description():
         package='vesc_ackermann',
         executable='ackermann_to_vesc_node',
         name='ackermann_to_vesc_node',
-        parameters=[LaunchConfiguration('vesc_config')]
+        parameters=[LaunchConfiguration('vesc_config')],
+        remappings=[('/ackermann_cmd', '/ackermann_cmd_filtered')]
     )
 
     vesc_to_odom_node = Node(

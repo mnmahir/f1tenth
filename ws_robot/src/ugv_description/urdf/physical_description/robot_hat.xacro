@@ -108,14 +108,14 @@
 
     <!-- CAMERA SENSOR -->
     <!-- Logitech C920 -->
-    <link name="camera_1_link">
-        <!-- <visual>
+    <!-- <link name="camera_1_link">
+        <visual>
             <origin xyz="0 0 0" rpy="0 0 0"/>
             <geometry>
                 <box size="0.02412 0.09333 0.02886"/>
             </geometry>
             <material name="orange"/>
-        </visual> -->
+        </visual>
         <visual>
             <origin xyz="0.1 0.047 -0.02898" rpy="${pi/2} 0 ${-pi/2}"/>
             <geometry>
@@ -128,14 +128,14 @@
         <parent link="platform_link"/>
         <child link="camera_1_link"/>
         <origin xyz="0.27 0 0.115" rpy="0 0 0"/>
-    </joint>
+    </joint> -->
     <!-- REP-103 convention -->
-    <link name="camera_optical_1_link"/>
+    <!-- <link name="camera_optical_1_link"/>
     <joint name="camera_optical_1_link_joint" type="fixed">
         <parent link="camera_1_link"/>
         <child link="camera_optical_1_link"/>
         <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
-    </joint>
+    </joint> -->
 
 
 </robot>

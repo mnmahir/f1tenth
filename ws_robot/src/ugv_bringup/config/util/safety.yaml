@@ -9,16 +9,16 @@ cmd_cutoff_and_brake_control:
 
 autonomous_safety_brake:
   ros__parameters:
-    ittc_threshold: 0.3
+    ittc_threshold: 0.4
     ittc_foward_drive_scan_width: 0.3
     ittc_foward_drive_x_scan_offset: -0.3
-    ittc_brake_release_delay: 100 # how long to wait in milliseconds (ms) before releasing the brake after the ITTC threshold is no longer exceeded
-    force_stop_rectangular_region: [0.0, 0.16, -0.14, 0.14]
+    ittc_brake_release_delay: 50 # how long to wait in milliseconds (ms) before releasing the brake after the ITTC threshold is no longer exceeded
+    force_stop_rectangular_region: [0.0, 0.16, -0.13, 0.13]
     force_stop_min_ray: 5 # minimum number of rays that must be in the force stop region to trigger a stop
     enable_recovery: true  # enable recovery from force stop
     recovery_timeout: 250 # how long to wait in milliseconds (ms) before attempting to recover from a force stop
     recovery_backup_speed: -1.0 # speed to drive backwards during recovery
-    recovery_backup_duration: 500 # how long to drive backwards during recovery
+    recovery_backup_duration: 300 # how long to drive backwards during recovery
     braking_current: -60.0
     scan_topic: '/scan'
     odom_topic: '/odom/wheel'

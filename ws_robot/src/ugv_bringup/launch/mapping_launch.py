@@ -21,7 +21,10 @@ def generate_launch_description():
     )
     
     localization_nodes = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([os.path.join(get_package_share_directory('ugv_bringup'), 'launch', 'components', 'localization_launch.py')]),
+        PythonLaunchDescriptionSource([os.path.join(get_package_share_directory('ugv_bringup'), 'launch', 'components', 'mapping_localization_launch.py')]),
+    )
+    slam_nodes = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([os.path.join(get_package_share_directory('ugv_bringup'), 'launch', 'tools', 'slam_launch.py')]),
     )
 
 
@@ -36,5 +39,6 @@ def generate_launch_description():
             sensor_nodes,
             safety_nodes,
             localization_nodes,
+            slam_nodes,
         ]
     )

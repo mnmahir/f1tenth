@@ -12,14 +12,36 @@
     rviz_current_waypoint_topic: "/current_waypoint"
     rviz_lookahead_waypoint_topic: "/lookahead_waypoint"
 
+    # Follow Gap Parameters
+    lidar_topic: "/scan"
+    safety_radius: 0.5
+    max_range: 3.0
+    drive_speed: 1.0
+
     # Pure Pursuit Parameters
     # Lookahead is computed using the following: lookahead = min(max(min_lookahead, max_lookahead * curr_velocity / lookahead_ratio), max_lookahead);
     min_lookahead: 0.2
-    max_lookahead: 1.0 # lookahead when the car is going around max velocity
+    max_lookahead: 1.5 # lookahead when the car is going around max velocity
     lookahead_ratio: 1.0 # approximately the max velocity
-    K_p: 0.5
-    steering_limit: 25.0
-    velocity_percentage: 0.6 # the limit, can only do 1 lap with clean tires
+    K_p: 0.7
+    steering_limit: 22.9
+    velocity_percentage: 0.7 # the limit, can only do 1 lap with clean tires
+
+
+    # Avoidance Controller Parameters
+    drive_topic_sub: "/ackermann_cmd"
+    drive_topic_pub: "/ackermann_cmd_filtered"
+    max_steering_angle: 22.9
+    side_wall_width: 0.35
+    side_wall_length: 0.424
+    side_wall_length_offset: -0.324
+    front_triangle_wall_width: 0.35
+    front_triangle_wall_length: 0.2324       # 0.6024 - 0.27 (lidar distance from wheelbase) - offset
+    front_triangle_wall_distance_offset: 0.1
+
+    side_wall_avoidance_boundary_topic: "/side_wall_avoidance_boundary"
+
+
 
     # Path Visualization Parameters
     rviz_waypoints_line_topic: "/waypoints_line"

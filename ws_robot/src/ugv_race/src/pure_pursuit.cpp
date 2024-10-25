@@ -77,12 +77,16 @@ public:
         vis_lookahead_point_pub_ = this->create_publisher<visualization_msgs::msg::Marker>(rviz_lookahead_waypoint_topic, 10);
 
         // Topic Subscriptions
-        if (!read_frame_pose) odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(odom_topic, 25, std::bind(&PurePursuit::odom_callback, this, std::placeholders::_1));
-        
+        if (!read_frame_pose) {
+            RCLCPP_INFO(this->get_logger(), "Using odom topic for pose");
+            odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(odom_topic, 25, std::bind(&PurePursuit::odom_callback, this, std::placeholders::_1));
+        }
         // Callback Timer
         dyn_conf_timer_ = this->create_wall_timer(std::chrono::milliseconds(2000), std::bind(&PurePursuit::dyn_conf_timer_callback, this));
-        if (read_frame_pose) get_pose_timer_ = this->create_wall_timer(std::chrono::milliseconds(1000/read_frame_pose_rate), std::bind(&PurePursuit::get_pose_on_map, this));
-        
+        if (read_frame_pose) {
+            RCLCPP_INFO(this->get_logger(), "Using frame lookup for pose");
+            get_pose_timer_ = this->create_wall_timer(std::chrono::milliseconds(1000/read_frame_pose_rate), std::bind(&PurePursuit::get_pose_on_map, this));
+        }
         
         tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
         transform_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
@@ -327,7 +331,7 @@ private:
         curr_velocity = get_velocity(drive_msgObj.drive.steering_angle);
         drive_msgObj.drive.speed = curr_velocity;
 
-        RCLCPP_INFO(this->get_logger(), "index: %d ... distance: %.2fm ... Speed: %.2fm/s ... Steering Angle: %.2f ... k_p: %.2f ... velocity_percentage: %.2f", waypoints.index, p2pdist(waypoints.X[waypoints.index], base_pose_x, waypoints.Y[waypoints.index], base_pose_y), drive_msgObj.drive.speed, to_degrees(drive_msgObj.drive.steering_angle), k_p, velocity_percentage);
+        RCLCPP_INFO(this->get_logger(), "Idx: %d | Distance: %.2fm | Speed: %.2fm/s | Steering angle: %.2f", waypoints.index, p2pdist(waypoints.X[waypoints.index], base_pose_x, waypoints.Y[waypoints.index], base_pose_y), drive_msgObj.drive.speed, to_degrees(drive_msgObj.drive.steering_angle));
 
         drive_pub_->publish(drive_msgObj);
     }
@@ -335,6 +339,7 @@ private:
     // Pose from odom callback
     void odom_callback(const nav_msgs::msg::Odometry::ConstSharedPtr odom_submsgObj)
     {
+        // log the this function is running
         base_pose_x = odom_submsgObj->pose.pose.position.x;
         base_pose_y = odom_submsgObj->pose.pose.position.y;
         // interpolate between different way-points

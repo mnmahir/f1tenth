@@ -11,6 +11,13 @@ def generate_launch_description():
         'config',
         'race.yaml'
     )
+    
+    reactive_follow_gap = Node(
+        package='ugv_race',
+        executable='reactive_node',
+        name='reactive_follow_gap',
+        parameters=[config]
+    )
 
     pure_pursuit = Node(
         package='ugv_race',
@@ -25,9 +32,18 @@ def generate_launch_description():
         name='waypoint_visualizer_node',
         parameters=[config]
     )
+    
+    avoidance_controller_node = Node(
+        package='ugv_race',
+        executable='avoidance_controller',
+        name='avoidance_controller_node',
+        parameters=[config]
+    )
 
     # finalize
-    # ld.add_action(pure_pursuit)
+    # ld.add_action(reactive_follow_gap)
+    ld.add_action(pure_pursuit)
     ld.add_action(waypoint_visualizer_node)
+    ld.add_action(avoidance_controller_node)
 
     return ld
