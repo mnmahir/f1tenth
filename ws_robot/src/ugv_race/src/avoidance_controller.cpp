@@ -1,16 +1,8 @@
-/*
-This node is for 2D LiDAR mounted at the center width of the vehicle.
-It will republish the drive message with adjusted steering angle to avoid obstacles.
-This node adds virtual fences to the vehicle to avoid obstacles.
-When obstacle is detected on the side of the vehicle and steering angle direction, it will counter steer and car will go straight avoiding the car turning towards the obstacle.
-When obstacle is detected in front of the vehicle, the triangle wall will steer the car away from the obstacle. Which direction the car will steer depends on the side of the obstacle. If both sides have obstacles, the car will steer towards the side with the most space using follow gap algorithm. After follow gap make the decision, it will lock the dicision of which side to steer until no more obstacles is detected.
-*/
-
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/laser_scan.hpp>
 #include <ackermann_msgs/msg/ackermann_drive_stamped.hpp>
 #include <nav_msgs/msg/odometry.hpp>
-
+#include <visualization_msgs/msg/marker.hpp>
 #include <geometry_msgs/msg/polygon_stamped.hpp>
 
 #include <cmath>
@@ -25,14 +17,23 @@ private:
     rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scan_sub_;
     rclcpp::Subscription<ackermann_msgs::msg::AckermannDriveStamped>::SharedPtr drive_sub_;
     rclcpp::Publisher<ackermann_msgs::msg::AckermannDriveStamped>::SharedPtr drive_pub_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr best_point_marker_pub_;
 
     rclcpp::Publisher<geometry_msgs::msg::PolygonStamped>::SharedPtr visualize_avoidance_boundary_;
+    rclcpp::Publisher<geometry_msgs::msg::PolygonStamped>::SharedPtr visualize_scan_rejection_boundary_;
 
     // timer initialisation
     rclcpp::TimerBase::SharedPtr dyn_conf_timer_;
 
     // variables
     double max_steering_angle_;
+
+    // gap finding parameters
+    double bubble_radius_;
+    double scan_rejection_distance_;
+    double angle_increment_;
+    double angle_min_;
+    double lidar_ray_fov_;
 
     // drive message callback
     double original_steering_angle_;
@@ -43,38 +44,14 @@ private:
     double side_wall_width_;
     double side_wall_length_;
     double side_wall_length_offset_;
-    double front_triangle_wall_width_;
-    double front_triangle_wall_length_;
-    double front_triangle_wall_distance_offset_;
+    double front_rectangle_wall_width_;
+    double front_rectangle_wall_length_;
+    double front_rectangle_wall_distance_offset_;
 
     std::string scan_frame_id_;
 
-    void drive_callback(const ackermann_msgs::msg::AckermannDriveStamped::SharedPtr drive_msg)
-    {
-        auto modified_drive_msg = ackermann_msgs::msg::AckermannDriveStamped();
-        modified_drive_msg = *drive_msg;
-
-        // Get the original steering angle
-        original_steering_angle_ = drive_msg->drive.steering_angle;
-
-        // Modify the steering angle
-        if (drive_msg->drive.speed < 0)
-        {
-            modified_drive_msg.drive.steering_angle = std::clamp(original_steering_angle_ - front_avoidance_offset_steering_angle_, -max_steering_angle_, max_steering_angle_);
-        } else {
-            modified_drive_msg.drive.steering_angle = std::clamp(original_steering_angle_ + side_avoidance_offset_steering_angle_ + front_avoidance_offset_steering_angle_, -max_steering_angle_, max_steering_angle_);
-        }
-          
-        // Publish the modified drive message
-        drive_pub_->publish(modified_drive_msg);
-    }
-
     void visualize_avoidance_boundary()
     {
-        /*
-        This function will visualize the avoidance boundary of the vehicle.
-        The avoidance boundary will be a polygon that represents the side wall and the front triangle wall.
-        */
         auto avoidance_boundary = geometry_msgs::msg::PolygonStamped();
         avoidance_boundary.header.frame_id = scan_frame_id_;
         avoidance_boundary.header.stamp = this->get_clock()->now();
@@ -87,12 +64,12 @@ private:
             {side_wall_length_offset_, side_wall_width_ / 2, 0.0},
             {side_wall_length_offset_, -side_wall_width_ / 2, 0.0}};
 
-        // Define the front triangle wall points
-        std::vector<std::vector<double>> front_triangle_wall_points = {
-            {front_triangle_wall_distance_offset_, -front_triangle_wall_width_ / 2, 0.0},
-            {front_triangle_wall_distance_offset_ + front_triangle_wall_length_, 0.0, 0.0},
-            {front_triangle_wall_distance_offset_, front_triangle_wall_width_ / 2, 0.0},
-            {front_triangle_wall_distance_offset_, -front_triangle_wall_width_ / 2, 0.0}};
+        // Define the front rectangle wall points
+        std::vector<std::vector<double>> front_rectangle_wall_points = {
+            {front_rectangle_wall_distance_offset_, -front_rectangle_wall_width_ / 2, 0.0},
+            {front_rectangle_wall_distance_offset_ + front_rectangle_wall_length_, 0.0, 0.0},
+            {front_rectangle_wall_distance_offset_, front_rectangle_wall_width_ / 2, 0.0},
+            {front_rectangle_wall_distance_offset_, -front_rectangle_wall_width_ / 2, 0.0}};
 
         // Add the side wall points to the avoidance boundary
         for (const auto &point : side_wall_points)
@@ -104,8 +81,8 @@ private:
             avoidance_boundary.polygon.points.push_back(p);
         }
 
-        // Add the front triangle wall points to the avoidance boundary
-        for (const auto &point : front_triangle_wall_points)
+        // Add the front rectangle wall points to the avoidance boundary
+        for (const auto &point : front_rectangle_wall_points)
         {
             geometry_msgs::msg::Point32 p;
             p.x = point[0];
@@ -118,81 +95,212 @@ private:
         visualize_avoidance_boundary_->publish(avoidance_boundary);
     }
 
-
-    void front_wall_avoidance(const std::vector<double> &x, const std::vector<double> &y)
+    void visualize_scan_rejection_boundary()
     {
-        /*
-        Front wall avoidance will check if there is any obstacle on the front left of the triangle and if there is, it will steer the car to the right. Same for the right side.
-        */
-        // Check if there is any obstacle in front of the vehicle
-        bool left_obstacle = false;
-        bool right_obstacle = false;
+        // Visualize the circular boundary from the LiDAR based on the scan rejection distance
+        auto boundary_msg = geometry_msgs::msg::PolygonStamped();
+        boundary_msg.header.frame_id = scan_frame_id_;
+        boundary_msg.header.stamp = this->now();
 
-        // Define the boundaries for the front triangle wall
-        double front_triangle_wall_min_x = front_triangle_wall_distance_offset_;
-        double front_triangle_wall_max_x = front_triangle_wall_distance_offset_ + front_triangle_wall_length_;
-        double front_triangle_wall_half_width = front_triangle_wall_width_ / 2;
+        // Create a circular boundary with points
+        int num_points = 360; // Number of points to represent the circle
+        double angle_increment = 2 * M_PI / num_points;
 
-        // Iterate through the scan points and check if any points fall within the triangular boundaries
-        for (size_t i = 0; i < x.size(); ++i)
+        for (int i = 0; i < num_points; ++i)
         {
-            if (x[i] >= front_triangle_wall_min_x && x[i] <= front_triangle_wall_max_x)
+            geometry_msgs::msg::Point32 point;
+            double angle = i * angle_increment;
+            point.x = scan_rejection_distance_ * std::cos(angle);
+            point.y = scan_rejection_distance_ * std::sin(angle);
+            point.z = 0.0;
+            boundary_msg.polygon.points.push_back(point);
+        }
+
+        visualize_scan_rejection_boundary_->publish(boundary_msg);
+    }
+
+    void publish_best_point_marker(int best_point_idx, const std::vector<double> &ranges, const std::vector<double> &angles)
+    {
+        auto marker = visualization_msgs::msg::Marker();
+        marker.header.frame_id = scan_frame_id_;
+        marker.header.stamp = this->get_clock()->now();
+        marker.ns = "best_point";
+        marker.id = 0;
+        marker.type = visualization_msgs::msg::Marker::SPHERE;
+        marker.action = visualization_msgs::msg::Marker::ADD;
+
+        double angle = angles[best_point_idx];
+        marker.pose.position.x = (front_rectangle_wall_length_ + front_rectangle_wall_distance_offset_) * std::cos(angle);
+        marker.pose.position.y = (front_rectangle_wall_length_ + front_rectangle_wall_distance_offset_) * std::sin(angle);
+        marker.pose.position.z = 0.0;
+
+        marker.scale.x = 0.1;
+        marker.scale.y = 0.1;
+        marker.scale.z = 0.1;
+
+        marker.color.r = 0.0;
+        marker.color.g = 1.0;
+        marker.color.b = 0.0;
+        marker.color.a = 1.0;
+
+        best_point_marker_pub_->publish(marker);
+    }
+
+    // Preprocess LiDAR data
+    void preprocess_lidar(std::vector<double> &ranges, const std::vector<double> &angles)
+    {
+        // Remove points outside the LiDAR field of view
+        for (int i = 0; i < ranges.size(); ++i)
+        {
+            if (std::abs(angles[i]) > lidar_ray_fov_ / 2)
             {
-                double max_y = front_triangle_wall_half_width * (1 - (x[i] - front_triangle_wall_min_x) / (front_triangle_wall_max_x - front_triangle_wall_min_x));
-                if (y[i] >= -max_y && y[i] <= max_y)
-                {
-                    if (y[i] > 0)
-                    {
-                        left_obstacle = true;
-                    }
-                    if (y[i] < 0)
-                    {
-                        right_obstacle = true;
-                    }
-                }
+                ranges[i] = 0.0;
             }
         }
-        // If both sides have obstacles, steer towards the side with the most space
-        if (left_obstacle && right_obstacle)
+        // Set high range values to zero to reject far points
+        for (auto &range : ranges)
         {
-            // Count the number of points on the left and right side of the front triangle wall. The side with the most space will have the least number of points.
-            long left_space = 0;
-            long right_space = 0;
-            for (size_t i = 0; i < x.size(); ++i)
+            if (range > scan_rejection_distance_)
             {
-                if (x[i] >= front_triangle_wall_min_x && x[i] <= front_triangle_wall_max_x)
-                {
-                    double max_y = front_triangle_wall_half_width * (1 - (x[i] - front_triangle_wall_min_x) / (front_triangle_wall_max_x - front_triangle_wall_min_x));
-                    if (y[i] >= -max_y && y[i] <= max_y)
-                    {
-                        if (y[i] > 0)
-                        {
-                            left_space += 1;
-                        }
-                        if (y[i] < 0)
-                        {
-                            right_space += 1;
-                        }
-                    }
-                }
+                range = scan_rejection_distance_ + 0.1;
             }
-            if (left_space > right_space)
+        }
+    }
+
+    // Find the start and end indices of the largest gap in the LiDAR scan data
+    std::pair<int, int> find_max_gap(const std::vector<double> &ranges)
+    {
+        int max_gap_start = -1;
+        int max_gap_end = -1;
+        int gap_start = -1;
+        int gap_end = -1;
+
+        for (int i = 0; i < ranges.size(); ++i)
+        {
+            if (ranges[i] > 0)
             {
-                front_avoidance_offset_steering_angle_ = -max_steering_angle_ * 2;
+                if (gap_start == -1)
+                {
+                    gap_start = i;
+                }
+                gap_end = i;
             }
             else
             {
-                front_avoidance_offset_steering_angle_ = max_steering_angle_ * 2;
+                if (gap_start != -1)
+                {
+                    if (gap_end - gap_start > max_gap_end - max_gap_start)
+                    {
+                        max_gap_start = gap_start;
+                        max_gap_end = gap_end;
+                    }
+                    gap_start = -1;
+                }
+            }
+        }
+
+        // Check the last gap
+        if (gap_start != -1 && gap_end - gap_start > max_gap_end - max_gap_start)
+        {
+            max_gap_start = gap_start;
+            max_gap_end = gap_end;
+        }
+
+        RCLCPP_INFO(this->get_logger(), "Max gap start: %d, end: %d", max_gap_start, max_gap_end);
+
+        return {max_gap_start, max_gap_end};
+    }
+
+    // Find the best point within the largest and furthest point
+    int find_best_point(const std::vector<double> &ranges, int gap_start, int gap_end)
+    {
+        int best_point_idx = gap_start;
+        double max_range = 0.0;
+
+        for (int i = gap_start; i <= gap_end; ++i)
+        {
+            if (ranges[i] > max_range)
+            {
+                max_range = ranges[i];
+                best_point_idx = i;
+            }
+        }
+
+        return best_point_idx;
+    }
+
+    void front_wall_avoidance_rect(const std::vector<double> &x, const std::vector<double> &y, std::vector<double> ranges, double angle_increment, double angle_min, const std::vector<double> &ray_angle)
+    {
+        bool obstacle_exist = false; // Any obstacle in the boundary?
+
+        // Define the boundaries for the front rectangle wall
+        double front_rectangle_wall_min_x = front_rectangle_wall_distance_offset_;
+        double front_rectangle_wall_max_x = front_rectangle_wall_distance_offset_ + front_rectangle_wall_length_;
+        double front_rectangle_wall_half_width = front_rectangle_wall_width_ / 2;
+
+        // Turning factor
+        double closest_obstacle_x = front_rectangle_wall_max_x;
+        double turning_factor = 0.0;
+
+        // Iterate through the scan points and check if any points fall within the rectangular boundaries
+        for (size_t i = 0; i < x.size(); ++i)
+        {
+            if (x[i] >= front_rectangle_wall_min_x && x[i] <= front_rectangle_wall_max_x)
+            {
+                if (y[i] >= -front_rectangle_wall_half_width && y[i] <= front_rectangle_wall_half_width)
+                {
+                    obstacle_exist = true;
+                    if (x[i] < closest_obstacle_x)
+                    {
+                        closest_obstacle_x = x[i];
+                    }
+                    // RCLCPP_INFO(this->get_logger(), "Obstacle at x: %f y: %f", x[i], y[i]);
+                }
+            }
+        }
+        turning_factor = (front_rectangle_wall_length_ - (closest_obstacle_x - front_rectangle_wall_min_x)) / front_rectangle_wall_length_;
+
+        if (obstacle_exist)
+        {
+            // Preprocess LiDAR data
+            preprocess_lidar(ranges, ray_angle);
+
+            // Find closest point to LiDAR
+            auto min_it = std::min_element(ranges.begin(), ranges.end());
+            int closest_idx = std::distance(ranges.begin(), min_it);
+            double closest_range = *min_it;
+
+            // Eliminate all points inside 'bubble' (set them to zero)
+            double angle_increment = angle_increment_;
+            double min_angle = angle_min_ + closest_idx * angle_increment;
+
+            for (int i = 0; i < ranges.size(); ++i)
+            {
+                double angle = angle_min_ + i * angle_increment;
+                if (std::abs(angle - min_angle) <= bubble_radius_)
+                {
+                    ranges[i] = 0.0;
+                }
             }
 
-        }
-        else if (left_obstacle)
-        {
-            front_avoidance_offset_steering_angle_ = -max_steering_angle_ * 2;
-        }
-        else if (right_obstacle)
-        {
-            front_avoidance_offset_steering_angle_ = max_steering_angle_ * 2;
+            // Find max length gap in the LiDAR scan data
+            auto [gap_start, gap_end] = find_max_gap(ranges);
+
+            // Find the best point in the gap
+            int best_point_idx = find_best_point(ranges, gap_start, gap_end);
+            publish_best_point_marker(best_point_idx, ranges, ray_angle);
+
+            // If the best point is on the left side of the vehicle, steer left and vice versa
+            if (best_point_idx < ranges.size() / 2)
+            {
+                front_avoidance_offset_steering_angle_ = -max_steering_angle_ * turning_factor * 2;
+                RCLCPP_INFO(this->get_logger(), "STEER RIGHT!, offset: %f", front_avoidance_offset_steering_angle_);
+            }
+            else
+            {
+                front_avoidance_offset_steering_angle_ = max_steering_angle_ * turning_factor * 2;
+                RCLCPP_INFO(this->get_logger(), "STEER LEFT!, offset: %f", front_avoidance_offset_steering_angle_);
+            }
         }
         else
         {
@@ -253,8 +361,11 @@ private:
 
     void scan_callback(const sensor_msgs::msg::LaserScan::SharedPtr scan_msg)
     {
-        // Get the frame id of the scan
+        // Get info from the scan message
         scan_frame_id_ = scan_msg->header.frame_id;
+        angle_increment_ = scan_msg->angle_increment;
+        angle_min_ = scan_msg->angle_min;
+        // float max_angle = scan_msg->angle_max;
 
         // Get the range and angle of the scan
         std::vector<double> ray_range(scan_msg->ranges.begin(), scan_msg->ranges.end());
@@ -273,13 +384,38 @@ private:
         }
 
         // Check if there is any obstacle in front of the vehicle
-        front_wall_avoidance(x, y);
+        // front_wall_avoidance(x, y);
+        front_wall_avoidance_rect(x, y, ray_range, angle_increment_, angle_min_, ray_angle);
 
         // Check if there is any obstacle on the side of the vehicle
         side_wall_avoidance(x, y);
 
         // Visualize the avoidance boundary
         visualize_avoidance_boundary();
+        visualize_scan_rejection_boundary();
+    }
+
+    void drive_callback(const ackermann_msgs::msg::AckermannDriveStamped::SharedPtr drive_msg)
+    {
+        auto modified_drive_msg = ackermann_msgs::msg::AckermannDriveStamped();
+        modified_drive_msg = *drive_msg;
+
+        // Get the original steering angle
+        original_steering_angle_ = drive_msg->drive.steering_angle;
+
+        // Modify the steering angle
+        if (drive_msg->drive.speed >= 0)
+        {
+            original_steering_angle_ = std::clamp(original_steering_angle_ + front_avoidance_offset_steering_angle_, -max_steering_angle_, max_steering_angle_);
+            modified_drive_msg.drive.steering_angle = std::clamp(original_steering_angle_ + side_avoidance_offset_steering_angle_, -max_steering_angle_, max_steering_angle_);
+        }
+        else
+        {
+            modified_drive_msg.drive.steering_angle = original_steering_angle_;
+        }
+
+        // Publish the modified drive message
+        drive_pub_->publish(modified_drive_msg);
     }
 
     void dyn_conf_timer_callback()
@@ -288,9 +424,9 @@ private:
         side_wall_width_ = this->get_parameter("side_wall_width").as_double();
         side_wall_length_ = this->get_parameter("side_wall_length").as_double();
         side_wall_length_offset_ = this->get_parameter("side_wall_length_offset").as_double();
-        front_triangle_wall_width_ = this->get_parameter("front_triangle_wall_width").as_double();
-        front_triangle_wall_length_ = this->get_parameter("front_triangle_wall_length").as_double();
-        front_triangle_wall_distance_offset_ = this->get_parameter("front_triangle_wall_distance_offset").as_double();
+        front_rectangle_wall_width_ = this->get_parameter("front_rectangle_wall_width").as_double();
+        front_rectangle_wall_length_ = this->get_parameter("front_rectangle_wall_length").as_double();
+        front_rectangle_wall_distance_offset_ = this->get_parameter("front_rectangle_wall_distance_offset").as_double();
     }
 
 public:
@@ -300,15 +436,20 @@ public:
         this->declare_parameter("scan_topic", "/scan");
         this->declare_parameter("drive_topic_sub", "/ackermann_cmd");
         this->declare_parameter("drive_topic_pub", "/ackermann_cmd_filtered");
-        this->declare_parameter("max_steering_angle", 22.9);                 // maximum steering angle (degrees)
-        this->declare_parameter("side_wall_width", 0.35);                    // width of the side wall from LiDAR
-        this->declare_parameter("side_wall_length", 0.424);                  // length of the side wall
-        this->declare_parameter("side_wall_length_offset", -0.324);          // distance from y axis of lidar
-        this->declare_parameter("front_triangle_wall_width", 0.35);          // triangle wall base width (from LiDAR)
-        this->declare_parameter("front_triangle_wall_length", 0.2324);       // triangle wall length from lidar to tip
-        this->declare_parameter("front_triangle_wall_distance_offset", 0.1); // distance from x axis of lidar
+        this->declare_parameter("max_steering_angle", 22.9);                  // maximum steering angle (degrees)
+        this->declare_parameter("bubble_radius", 0.281);                      // radius of the safety bubble around the closest obstacle
+        this->declare_parameter("scan_rejection_distance", 3.0);              // reject far points (meters)
+        this->declare_parameter("lidar_ray_fov", 180.0);                      // width of the side wall from LiDAR
+        this->declare_parameter("side_wall_width", 0.35);                     // width of the side wall from LiDAR
+        this->declare_parameter("side_wall_length", 0.424);                   // length of the side wall
+        this->declare_parameter("side_wall_length_offset", -0.324);           // distance from y axis of lidar
+        this->declare_parameter("front_rectangle_wall_width", 0.35);          // rectangle wall width (from LiDAR)
+        this->declare_parameter("front_rectangle_wall_length", 0.2324);       // rectangle wall length from lidar
+        this->declare_parameter("front_rectangle_wall_distance_offset", 0.1); // distance from x axis of lidar
 
-        this->declare_parameter("side_wall_avoidance_boundary_topic", "/side_wall_avoidance_boundary");
+        this->declare_parameter("visualize_boundary_topic", "/avoidance_control_boundary");
+        this->declare_parameter("visualize_scan_rejection_boundary_topic", "/scan_rejection_boundary");
+        this->declare_parameter("visualize_best_point_topic", "/best_point_marker");
 
         // Initialize subscribers
         drive_sub_ = this->create_subscription<ackermann_msgs::msg::AckermannDriveStamped>(this->get_parameter("drive_topic_sub").as_string(), 10, std::bind(&AvoidanceController::drive_callback, this, std::placeholders::_1));
@@ -316,22 +457,39 @@ public:
 
         // Initialize publishers
         drive_pub_ = this->create_publisher<ackermann_msgs::msg::AckermannDriveStamped>(this->get_parameter("drive_topic_pub").as_string(), 10);
-        visualize_avoidance_boundary_ = this->create_publisher<geometry_msgs::msg::PolygonStamped>(this->get_parameter("side_wall_avoidance_boundary_topic").as_string(), 10);
+        visualize_avoidance_boundary_ = this->create_publisher<geometry_msgs::msg::PolygonStamped>(this->get_parameter("visualize_boundary_topic").as_string(), 10);
+        visualize_scan_rejection_boundary_ = this->create_publisher<geometry_msgs::msg::PolygonStamped>(this->get_parameter("visualize_scan_rejection_boundary_topic").as_string(), 10);
+        best_point_marker_pub_ = this->create_publisher<visualization_msgs::msg::Marker>(this->get_parameter("visualize_best_point_topic").as_string(), 10);
 
         // Initialize variables
         original_steering_angle_ = 0.0;
         side_avoidance_offset_steering_angle_ = 0.0;
         front_avoidance_offset_steering_angle_ = 0.0;
         max_steering_angle_ = this->get_parameter("max_steering_angle").as_double() * M_PI / 180.0;
+        bubble_radius_ = this->get_parameter("bubble_radius").as_double();
+        lidar_ray_fov_ = this->get_parameter("lidar_ray_fov").as_double() * M_PI / 180.0;
+        scan_rejection_distance_ = this->get_parameter("scan_rejection_distance").as_double();
         side_wall_width_ = this->get_parameter("side_wall_width").as_double();
         side_wall_length_ = this->get_parameter("side_wall_length").as_double();
         side_wall_length_offset_ = this->get_parameter("side_wall_length_offset").as_double();
-        front_triangle_wall_width_ = this->get_parameter("front_triangle_wall_width").as_double();
-        front_triangle_wall_length_ = this->get_parameter("front_triangle_wall_length").as_double();
-        front_triangle_wall_distance_offset_ = this->get_parameter("front_triangle_wall_distance_offset").as_double();
+        front_rectangle_wall_width_ = this->get_parameter("front_rectangle_wall_width").as_double();
+        front_rectangle_wall_length_ = this->get_parameter("front_rectangle_wall_length").as_double();
+        front_rectangle_wall_distance_offset_ = this->get_parameter("front_rectangle_wall_distance_offset").as_double();
 
-        // Initialize the dynamic configuration timer
+        // Initialize dynamic configuration timer
         dyn_conf_timer_ = this->create_wall_timer(std::chrono::milliseconds(2000), std::bind(&AvoidanceController::dyn_conf_timer_callback, this));
+
+        RCLCPP_INFO(this->get_logger(), "AvoidanceController node has started.");
+        RCLCPP_INFO(this->get_logger(), "max_steering_angle: \033[1;33m%f", max_steering_angle_);
+        RCLCPP_INFO(this->get_logger(), "bubble_radius: \033[1;33m%f", bubble_radius_);
+        RCLCPP_INFO(this->get_logger(), "scan_rejection_distance: \033[1;33m%f", scan_rejection_distance_);
+        RCLCPP_INFO(this->get_logger(), "lidar_ray_fov: \033[1;33m%f", lidar_ray_fov_ * 180.0 / M_PI);
+        RCLCPP_INFO(this->get_logger(), "side_wall_width: \033[1;33m%f", side_wall_width_);
+        RCLCPP_INFO(this->get_logger(), "side_wall_length: \033[1;33m%f", side_wall_length_);
+        RCLCPP_INFO(this->get_logger(), "side_wall_length_offset: \033[1;33m%f", side_wall_length_offset_);
+        RCLCPP_INFO(this->get_logger(), "front_rectangle_wall_width: \033[1;33m%f", front_rectangle_wall_width_);
+        RCLCPP_INFO(this->get_logger(), "front_rectangle_wall_length: \033[1;33m%f", front_rectangle_wall_length_);
+        RCLCPP_INFO(this->get_logger(), "front_rectangle_wall_distance_offset: \033[1;33m%f", front_rectangle_wall_distance_offset_);
     }
 };
 

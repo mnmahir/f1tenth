@@ -1,24 +1,18 @@
-cmd_cutoff_and_brake_control:
+/**:
   ros__parameters:
     joy_topic: '/joy'
     joy_axis: 4
-    braking_current: -60.0
-    brake_publisher_topic: '/commands/motor/brake'
-    bool_publisher_topic: '/mux_bool/autonomous_cutoff_and_brake'
 
-
-autonomous_safety_brake:
-  ros__parameters:
-    ittc_threshold: 0.4
+    ittc_threshold: 0.35
     ittc_foward_drive_scan_width: 0.3
     ittc_foward_drive_x_scan_offset: -0.3
     ittc_brake_release_delay: 50 # how long to wait in milliseconds (ms) before releasing the brake after the ITTC threshold is no longer exceeded
-    force_stop_rectangular_region: [0.0, 0.16, -0.13, 0.13]
+    force_stop_rectangular_region: [0.0, 0.13, -0.13, 0.13]
     force_stop_min_ray: 5 # minimum number of rays that must be in the force stop region to trigger a stop
     enable_recovery: true  # enable recovery from force stop
-    recovery_timeout: 250 # how long to wait in milliseconds (ms) before attempting to recover from a force stop
-    recovery_backup_speed: -1.0 # speed to drive backwards during recovery
-    recovery_backup_duration: 300 # how long to drive backwards during recovery
+    recovery_timeout: 500 # how long to wait in milliseconds (ms) before attempting to recover from a force stop
+    recovery_backup_speed: -0.5 # speed to drive backwards during recovery
+    recovery_backup_duration: 1000 # how long to drive backwards during recovery
     braking_current: -60.0
     scan_topic: '/scan'
     odom_topic: '/odom/wheel'
@@ -26,3 +20,12 @@ autonomous_safety_brake:
     bool_publisher_topic: '/mux_bool/autonomous_cutoff_and_brake'
     bypass_teleop_topic: '/joy'
     bypass_teleop_button: 6
+
+    base_frame: 'base_footprint'
+    laser_scan_frame: 'lidar_1_link'
+    wheelbase: 0.324
+    drive_topic: 'ackermann_cmd'
+    trajectory_topic: '/trajectory_marker'
+    force_stop_boundary_topic: '/safety/force_stop_boundary'
+    ittc_stop_boundary_topic: '/safety/ittc_stop_boundary'
+    visualization_update_rate: 30

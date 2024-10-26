@@ -18,6 +18,7 @@ foreach(PACKAGE
   std_msgs
   tf2_ros
   tf2_geometry_msgs
+  visualization_msgs
   )
 
   find_package(${PACKAGE} REQUIRED)
@@ -45,6 +46,9 @@ ament_target_dependencies(transform_to_odom rclcpp ackermann_msgs tf2_ros tf2_ge
 add_executable(safety_brake src/safety_brake.cpp)
 ament_target_dependencies(safety_brake rclcpp sensor_msgs nav_msgs std_msgs ackermann_msgs geometry_msgs)
 
+add_executable(utility_visualizer src/utility_visualizer.cpp)
+ament_target_dependencies(utility_visualizer rclcpp ackermann_msgs visualization_msgs geometry_msgs)
+
 # Install CPP executables
 install(TARGETS
   cutoff_and_brake_control
@@ -52,6 +56,7 @@ install(TARGETS
   modified_cmd_ackermann
   transform_to_odom
   safety_brake
+  utility_visualizer
   DESTINATION lib/${PROJECT_NAME})
 
 

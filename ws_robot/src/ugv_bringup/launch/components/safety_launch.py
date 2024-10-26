@@ -7,28 +7,36 @@ from ament_index_python.packages import get_package_share_directory
 import os
 
 def generate_launch_description():
-    safety_config = os.path.join(get_package_share_directory('ugv_bringup'), 'config', 'util', 'safety.yaml')
+    util_config = os.path.join(get_package_share_directory('ugv_bringup'), 'config', 'util', 'util.yaml')
     
-    safety_config_arg = DeclareLaunchArgument('safety_config', default_value=safety_config, description='Path to safety config file')
+    util_config_arg = DeclareLaunchArgument('util_config', default_value=util_config, description='Path to utility config file')
     
     cmd_cutoff_and_brake_node = Node(
         package='ugv_util',
         executable='cutoff_and_brake_control',
         name='cmd_cutoff_and_brake_control',
-        parameters=[LaunchConfiguration('safety_config')],
+        parameters=[LaunchConfiguration('util_config')],
     )
     
     autonomous_safety_brake_node = Node(
         package='ugv_util',
         executable='safety_brake',
         name='autonomous_safety_brake',
-        parameters=[LaunchConfiguration('safety_config')],
+        parameters=[LaunchConfiguration('util_config')],
+    )
+    
+    visualizer_node = Node(
+        package='ugv_util',
+        executable='utility_visualizer',
+        name='utility_visualizer',
+        # parameters=[LaunchConfiguration('util_config')],
     )
 
     return LaunchDescription([
             LogInfo(msg="STARTING SAFETY COMPONENTS..."),
-            safety_config_arg,
+            util_config_arg,
             cmd_cutoff_and_brake_node,
             autonomous_safety_brake_node,
+            visualizer_node,
         ]
     )

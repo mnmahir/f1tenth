@@ -40,8 +40,6 @@ public:
         brake_pub_ = this->create_publisher<std_msgs::msg::Float64>(this->get_parameter("brake_publisher_topic").as_string(), 10);
         safe_pub_ = this->create_publisher<std_msgs::msg::Bool>(this->get_parameter("bool_publisher_topic").as_string(), 10);
         cmd_ackermann_pub_ = this->create_publisher<ackermann_msgs::msg::AckermannDriveStamped>("/cmd_auto/recovery", 10);  
-        force_stop_boundary_pub_ = this->create_publisher<geometry_msgs::msg::PolygonStamped>("/safety/force_stop_boundary", 10);
-        force_ittc_stop_boundary_pub_ = this->create_publisher<geometry_msgs::msg::PolygonStamped>("/safety/ittc_stop_boundary", 10);
 
         // Initialize subscribers
         scan_sub_ = this->create_subscription<sensor_msgs::msg::LaserScan>(this->get_parameter("scan_topic").as_string(), 10, std::bind(&SafetyNode::scan_callback, this, std::placeholders::_1));
@@ -79,58 +77,12 @@ public:
         RCLCPP_INFO(this->get_logger(), "Maximum braking current: \033[1;33m%.2f A", braking_current_);
         RCLCPP_INFO(this->get_logger(), "iTTC brake release delay: \033[1;33m%d ms", static_cast<int>(ittc_brake_release_delay_));
         RCLCPP_INFO(this->get_logger(), "Recovery mode: \033[1;33m%s", enable_recovery_ ? "enabled" : "disabled");
+
+        // Initialize dynamic configuration timer
+        dyn_conf_timer_ = this->create_wall_timer(2s, std::bind(&SafetyNode::dyn_conf_timer_callback, this));
     }
 
 private:
-    void publish_force_stop_boundary() {
-        auto polygon = geometry_msgs::msg::PolygonStamped();
-        polygon.header.frame_id = scan_frame_id_;
-        polygon.header.stamp = this->get_clock()->now();
-
-        std::vector<std::vector<double>> points = {
-            {fstop_rect_x_min_, fstop_rect_y_min_, 0.0},
-            {fstop_rect_x_min_, fstop_rect_y_max_, 0.0},
-            {fstop_rect_x_max_, fstop_rect_y_max_, 0.0},
-            {fstop_rect_x_max_, fstop_rect_y_min_, 0.0}
-        };
-
-        for (const auto& point : points) {
-            geometry_msgs::msg::Point32 p;
-            p.x = point[0];
-            p.y = point[1];
-            p.z = point[2];
-            polygon.polygon.points.push_back(p);
-        }
-
-        force_stop_boundary_pub_->publish(polygon);
-    }
-
-    void publish_ittc_foward_drive_scan_boundary() {
-        auto polygon = geometry_msgs::msg::PolygonStamped();
-        polygon.header.frame_id = scan_frame_id_;  // Fetch the frame_id from scan
-        polygon.header.stamp = this->get_clock()->now();
-
-        // Define the rectangular region points
-        std::vector<std::vector<double>> points = {
-            {ittc_foward_drive_x_scan_offset_, -(ittc_foward_drive_scan_width_ / 2), 0.0},
-            {ittc_foward_drive_x_scan_offset_, (ittc_foward_drive_scan_width_ / 2), 0.0},
-            {1.0, (ittc_foward_drive_scan_width_ / 2), 0.0},
-            {ittc_foward_drive_x_scan_offset_, (ittc_foward_drive_scan_width_ / 2), 0.0},
-            {ittc_foward_drive_x_scan_offset_, -(ittc_foward_drive_scan_width_ / 2), 0.0},
-            {1.0, -(ittc_foward_drive_scan_width_ / 2), 0.0}
-        };
-
-        for (const auto& point : points) {
-            geometry_msgs::msg::Point32 p;
-            p.x = point[0];
-            p.y = point[1];
-            p.z = point[2];
-            polygon.polygon.points.push_back(p);
-        }
-
-        force_ittc_stop_boundary_pub_->publish(polygon);
-    }
-
     void apply_emergency_brake() {
         if (!toggle_emergency_brake_) {
             toggle_emergency_brake_ = true;
@@ -186,12 +138,10 @@ private:
 
     void odom_callback(const nav_msgs::msg::Odometry::SharedPtr odom_msg) {
         speed_ = odom_msg->twist.twist.linear.x;
-        publish_force_stop_boundary();
     }
 
     void cmd_ackermann_callback(const ackermann_msgs::msg::AckermannDriveStamped::SharedPtr ackermann_msg) {
         steering_angle_ = ackermann_msg->drive.steering_angle;
-        publish_ittc_foward_drive_scan_boundary();
     }
 
     void scan_callback(const sensor_msgs::msg::LaserScan::SharedPtr scan_msg) {
@@ -295,15 +245,29 @@ private:
         cmd_ackermann_pub_->publish(ackermann_msg);
     }
 
+    void dyn_conf_timer_callback()
+    {
+        braking_current_ = this->get_parameter("braking_current").as_double();
+        ittc_threshold_ = this->get_parameter("ittc_threshold").as_double();
+        fstop_min_ray_ = this->get_parameter("force_stop_min_ray").as_int();
+        auto force_stop_rect = this->get_parameter("force_stop_rectangular_region").as_double_array();
+        bypass_teleop_button_ = this->get_parameter("bypass_teleop_button").as_int();
+        ittc_foward_drive_scan_width_ = this->get_parameter("ittc_foward_drive_scan_width").as_double();
+        ittc_foward_drive_x_scan_offset_ = this->get_parameter("ittc_foward_drive_x_scan_offset").as_double();
+        ittc_brake_release_delay_ = this->get_parameter("ittc_brake_release_delay").as_int();
+        enable_recovery_ = this->get_parameter("enable_recovery").as_bool();
+        recovery_timeout_ = this->get_parameter("recovery_timeout").as_int();
+        recovery_backup_speed_ = this->get_parameter("recovery_backup_speed").as_double();
+        recovery_backup_duration_ = this->get_parameter("recovery_backup_duration").as_int();
+    }
+
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr brake_pub_;
     rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr safe_pub_;
     rclcpp::Publisher<ackermann_msgs::msg::AckermannDriveStamped>::SharedPtr cmd_ackermann_pub_;
-    rclcpp::Publisher<geometry_msgs::msg::PolygonStamped>::SharedPtr force_stop_boundary_pub_;
-    rclcpp::Publisher<geometry_msgs::msg::PolygonStamped>::SharedPtr force_ittc_stop_boundary_pub_;
     rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scan_sub_;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
     rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr bypass_teleop_sub_;
-    rclcpp::TimerBase::SharedPtr timer_;
+    rclcpp::TimerBase::SharedPtr dyn_conf_timer_;
 
     double braking_current_;
     double ittc_threshold_;
