@@ -20,9 +20,9 @@ public:
         this->declare_parameter<double>("wheelbase", 0.324);
         this->declare_parameter("ittc_foward_drive_scan_width", 0.3);
         this->declare_parameter("ittc_foward_drive_x_scan_offset", -0.3);
-        this->declare_parameter("force_stop_rectangular_region", std::vector<double>{0.0, 0.16, -0.14, 0.14});
+        this->declare_parameter("force_stop_rectangular_region", std::vector<double>{0.0, 0.15, -0.11, 0.11});
 
-        this->declare_parameter<std::string>("drive_topic", "/ackermann_cmd");
+        this->declare_parameter<std::string>("viz_drive_topic", "/ackermann_cmd_filtered");
 
         this->declare_parameter<std::string>("trajectory_topic", "trajectory_marker");
         this->declare_parameter<std::string>("force_stop_boundary_topic", "safety/force_stop_boundary");
@@ -44,7 +44,7 @@ public:
 
 
         // Create a subscriber to the car's state
-        state_subscriber_ = this->create_subscription<ackermann_msgs::msg::AckermannDriveStamped>(this->get_parameter("drive_topic").as_string(), 10, std::bind(&UtilityVisualizer::stateCallback, this, std::placeholders::_1));
+        state_subscriber_ = this->create_subscription<ackermann_msgs::msg::AckermannDriveStamped>(this->get_parameter("viz_drive_topic").as_string(), 10, std::bind(&UtilityVisualizer::stateCallback, this, std::placeholders::_1));
 
         // Create a publisher for the visualization
         trajectory_pub_ = this->create_publisher<visualization_msgs::msg::Marker>(this->get_parameter("trajectory_topic").as_string(), 10);

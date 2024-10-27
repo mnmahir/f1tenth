@@ -26,6 +26,9 @@ def generate_launch_description():
     slam_nodes = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([os.path.join(get_package_share_directory('ugv_bringup'), 'launch', 'tools', 'slam_launch.py')]),
     )
+    race_controller = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([os.path.join(get_package_share_directory('ugv_bringup'), 'launch', 'components', 'race_controller_launch.py')]),
+    )
 
 
     # test_node = ExecuteProcess(
@@ -40,5 +43,6 @@ def generate_launch_description():
             safety_nodes,
             localization_nodes,
             slam_nodes,
+            race_controller,
         ]
     )

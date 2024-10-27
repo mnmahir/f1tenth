@@ -160,8 +160,8 @@ private:
         marker.pose.position.y = (front_rectangle_wall_length_ + front_rectangle_wall_distance_offset_) * std::sin(angle);
         marker.pose.position.z = 0.0;
 
-        marker.scale.x = 0.1;
-        marker.scale.y = 0.1;
+        marker.scale.x = 0.281;
+        marker.scale.y = 0.281;
         marker.scale.z = 0.1;
 
         marker.color.r = 0.0;
@@ -318,7 +318,7 @@ private:
                         closest_obstacle_x = x[i];
                     }
                     // RCLCPP_INFO(this->get_logger(), "Obstacle at x: %f y: %f", x[i], y[i]);
-                    if (y[i] > 0 && x[i] < (front_rectangle_wall_distance_offset_ + front_rectangle_wall_length_) / 2)
+                    if (y[i] > 0 && x[i] < (front_rectangle_wall_distance_offset_ + front_rectangle_wall_length_) / 3)
                     {
                         obs_left_space = true;
                         if (x[i] < obs_left_closest_x)
@@ -326,7 +326,7 @@ private:
                             obs_left_closest_x = x[i];
                         }
                     }
-                    if (y[i] < 0 && x[i] < (front_rectangle_wall_distance_offset_ + front_rectangle_wall_length_) / 2)
+                    if (y[i] < 0 && x[i] < (front_rectangle_wall_distance_offset_ + front_rectangle_wall_length_) / 3)
                     {
                         obs_right_space = true;
                         if (x[i] < obs_right_closest_x)

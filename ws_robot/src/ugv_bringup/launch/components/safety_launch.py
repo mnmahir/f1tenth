@@ -7,7 +7,7 @@ from ament_index_python.packages import get_package_share_directory
 import os
 
 def generate_launch_description():
-    util_config = os.path.join(get_package_share_directory('ugv_bringup'), 'config', 'util', 'util.yaml')
+    util_config = os.path.join(get_package_share_directory('ugv_bringup'), 'config', 'util.yaml')
     
     util_config_arg = DeclareLaunchArgument('util_config', default_value=util_config, description='Path to utility config file')
     
@@ -29,7 +29,7 @@ def generate_launch_description():
         package='ugv_util',
         executable='utility_visualizer',
         name='utility_visualizer',
-        # parameters=[LaunchConfiguration('util_config')],
+        # parameters=[LaunchConfiguration('util_config')],      # Cannot use.. Need to check
     )
 
     return LaunchDescription([
