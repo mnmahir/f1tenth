@@ -17,9 +17,9 @@
     drive_topic_sub: "/ackermann_cmd"
     drive_topic_pub: "/ackermann_cmd_filtered"
     max_steering_angle: 22.9
-    bubble_radius: 0.281
+    bubble_radius: 0.14505
     scan_rejection_distance: 5.0
-    lidar_ray_fov: 150.0
+    lidar_ray_fov: 180.0
     side_wall_width: 0.4
     side_wall_length: 0.474
     side_wall_length_offset: -0.324

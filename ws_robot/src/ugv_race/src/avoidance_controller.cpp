@@ -97,24 +97,50 @@ private:
 
     void visualize_scan_rejection_boundary()
     {
-        // Visualize the circular boundary from the LiDAR based on the scan rejection distance
+        // Visualize the pie boundary from the LiDAR based on the scan rejection distance and FOV
         auto boundary_msg = geometry_msgs::msg::PolygonStamped();
         boundary_msg.header.frame_id = scan_frame_id_;
         boundary_msg.header.stamp = this->now();
 
-        // Create a circular boundary with points
-        int num_points = 360; // Number of points to represent the circle
-        double angle_increment = 2 * M_PI / num_points;
+        // Create a pie boundary with points
+        int num_points = 360; // Number of points to represent the pie
+        double angle_increment = lidar_ray_fov_ / num_points;
 
-        for (int i = 0; i < num_points; ++i)
+        // Add the center point of the pie
+        geometry_msgs::msg::Point32 center_point;
+        center_point.x = 0.0;
+        center_point.y = 0.0;
+        center_point.z = 0.0;
+        boundary_msg.polygon.points.push_back(center_point);
+
+        // Add the boundary points of the larger pie
+        for (int i = 0; i <= num_points; ++i)
         {
             geometry_msgs::msg::Point32 point;
-            double angle = i * angle_increment;
+            double angle = -lidar_ray_fov_ / 2 + i * angle_increment;
             point.x = scan_rejection_distance_ * std::cos(angle);
             point.y = scan_rejection_distance_ * std::sin(angle);
             point.z = 0.0;
             boundary_msg.polygon.points.push_back(point);
         }
+
+        // Add the last point to close the larger pie shape
+        boundary_msg.polygon.points.push_back(center_point);
+
+        // Add the boundary points of the smaller pie
+        double smaller_pie_radius = front_rectangle_wall_length_ + front_rectangle_wall_distance_offset_;
+        for (int i = 0; i <= num_points; ++i)
+        {
+            geometry_msgs::msg::Point32 point;
+            double angle = -lidar_ray_fov_ / 2 + i * angle_increment;
+            point.x = smaller_pie_radius * std::cos(angle);
+            point.y = smaller_pie_radius * std::sin(angle);
+            point.z = 0.0;
+            boundary_msg.polygon.points.push_back(point);
+        }
+
+        // Add the last point to close the smaller pie shape
+        boundary_msg.polygon.points.push_back(center_point);
 
         visualize_scan_rejection_boundary_->publish(boundary_msg);
     }
@@ -162,7 +188,7 @@ private:
         {
             if (range > scan_rejection_distance_)
             {
-                range = scan_rejection_distance_ + 0.1;
+                range = scan_rejection_distance_ - 0.1;
             }
         }
     }
@@ -206,7 +232,7 @@ private:
             max_gap_end = gap_end;
         }
 
-        RCLCPP_INFO(this->get_logger(), "Max gap start: %d, end: %d", max_gap_start, max_gap_end);
+        // RCLCPP_INFO(this->get_logger(), "Max gap start: %d, end: %d", max_gap_start, max_gap_end);
 
         return {max_gap_start, max_gap_end};
     }
@@ -214,15 +240,46 @@ private:
     // Find the best point within the largest and furthest point
     int find_best_point(const std::vector<double> &ranges, int gap_start, int gap_end)
     {
+        int mid_idx = (gap_start + gap_end) / 2;
+        double left_total_distance = 0.0;
+        double right_total_distance = 0.0;
+
+        // Calculate total distances for left and right sides
+        for (int i = gap_start; i <= mid_idx; ++i)
+        {
+            left_total_distance += ranges[i];
+        }
+        for (int i = mid_idx + 1; i <= gap_end; ++i)
+        {
+            right_total_distance += ranges[i];
+        }
+
+        // Determine the side with the greater total distance
         int best_point_idx = gap_start;
         double max_range = 0.0;
 
-        for (int i = gap_start; i <= gap_end; ++i)
+        if (left_total_distance > right_total_distance)
         {
-            if (ranges[i] > max_range)
+            // Choose the best point from the left side
+            for (int i = gap_start; i <= mid_idx; ++i)
             {
-                max_range = ranges[i];
-                best_point_idx = i;
+                if (ranges[i] > max_range)
+                {
+                    max_range = ranges[i];
+                    best_point_idx = i;
+                }
+            }
+        }
+        else
+        {
+            // Choose the best point from the right side
+            for (int i = mid_idx + 1; i <= gap_end; ++i)
+            {
+                if (ranges[i] > max_range)
+                {
+                    max_range = ranges[i];
+                    best_point_idx = i;
+                }
             }
         }
 
@@ -242,6 +299,12 @@ private:
         double closest_obstacle_x = front_rectangle_wall_max_x;
         double turning_factor = 0.0;
 
+        // Obstacle left and right space
+        bool obs_left_space = false;
+        bool obs_right_space = false;
+        double obs_left_closest_x = front_rectangle_wall_max_x;
+        double obs_right_closest_x = front_rectangle_wall_max_x;
+
         // Iterate through the scan points and check if any points fall within the rectangular boundaries
         for (size_t i = 0; i < x.size(); ++i)
         {
@@ -255,12 +318,29 @@ private:
                         closest_obstacle_x = x[i];
                     }
                     // RCLCPP_INFO(this->get_logger(), "Obstacle at x: %f y: %f", x[i], y[i]);
+                    if (y[i] > 0 && x[i] < (front_rectangle_wall_distance_offset_ + front_rectangle_wall_length_) / 2)
+                    {
+                        obs_left_space = true;
+                        if (x[i] < obs_left_closest_x)
+                        {
+                            obs_left_closest_x = x[i];
+                        }
+                    }
+                    if (y[i] < 0 && x[i] < (front_rectangle_wall_distance_offset_ + front_rectangle_wall_length_) / 2)
+                    {
+                        obs_right_space = true;
+                        if (x[i] < obs_right_closest_x)
+                        {
+                            obs_right_closest_x = x[i];
+                        }
+                    }
                 }
             }
         }
         turning_factor = (front_rectangle_wall_length_ - (closest_obstacle_x - front_rectangle_wall_min_x)) / front_rectangle_wall_length_;
 
-        if (obstacle_exist)
+        if (obstacle_exist && !obs_left_space && !obs_right_space)
+        // if (obstacle_exist)
         {
             // Preprocess LiDAR data
             preprocess_lidar(ranges, ray_angle);
@@ -294,13 +374,23 @@ private:
             if (best_point_idx < ranges.size() / 2)
             {
                 front_avoidance_offset_steering_angle_ = -max_steering_angle_ * turning_factor * 2;
-                RCLCPP_INFO(this->get_logger(), "STEER RIGHT!, offset: %f", front_avoidance_offset_steering_angle_);
+                RCLCPP_INFO(this->get_logger(), "STEER \033[0;33mRIGHT!, \033[0moffset: %f", front_avoidance_offset_steering_angle_);
             }
             else
             {
                 front_avoidance_offset_steering_angle_ = max_steering_angle_ * turning_factor * 2;
-                RCLCPP_INFO(this->get_logger(), "STEER LEFT!, offset: %f", front_avoidance_offset_steering_angle_);
+                RCLCPP_INFO(this->get_logger(), "STEER \033[0;33mLEFT!, \033[0moffset: %f", front_avoidance_offset_steering_angle_);
             }
+        }
+        else if (obs_left_closest_x < obs_right_closest_x)
+        {
+            front_avoidance_offset_steering_angle_ = -max_steering_angle_ * 2;
+            RCLCPP_INFO(this->get_logger(), "FORCE STEER \033[0;33mRIGHT!, \033[0moffset: %f", front_avoidance_offset_steering_angle_);
+        }
+        else if (obs_right_closest_x < obs_left_closest_x)
+        {
+            front_avoidance_offset_steering_angle_ = max_steering_angle_ * 2;
+            RCLCPP_INFO(this->get_logger(), "FORCE STEER \033[0;33mLEFT!, \033[0moffset: %f", front_avoidance_offset_steering_angle_);
         }
         else
         {
