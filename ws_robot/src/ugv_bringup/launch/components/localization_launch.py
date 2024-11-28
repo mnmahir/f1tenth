@@ -11,7 +11,7 @@ import os
 
 def generate_launch_description():
     amcl_params_file_path = os.path.join(get_package_share_directory('ugv_bringup'), 'config', 'localization', 'amcl.yaml')
-    map_yaml_file_path = os.path.join(get_package_share_directory('ugv_race'), 'maps', 'hijau_v2', 'map.yaml')
+    map_yaml_file_path = os.path.join(get_package_share_directory('ugv_race'), 'maps', 'f1tenth', 'map.yaml')
     ekf_yaml_file_path = os.path.join(get_package_share_directory('ugv_bringup'), 'config', 'localization', 'ekf.yaml')
 
     stdout_linebuf_envvar =         SetEnvironmentVariable('RCUTILS_LOGGING_BUFFERED_STREAM', '1')

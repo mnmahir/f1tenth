@@ -374,23 +374,23 @@ private:
             if (best_point_idx < ranges.size() / 2)
             {
                 front_avoidance_offset_steering_angle_ = -max_steering_angle_ * turning_factor * 2;
-                RCLCPP_INFO(this->get_logger(), "STEER \033[0;33mRIGHT!, \033[0moffset: %f", front_avoidance_offset_steering_angle_);
+                // RCLCPP_INFO(this->get_logger(), "STEER \033[0;33mRIGHT!, \033[0moffset: %f", front_avoidance_offset_steering_angle_);
             }
             else
             {
                 front_avoidance_offset_steering_angle_ = max_steering_angle_ * turning_factor * 2;
-                RCLCPP_INFO(this->get_logger(), "STEER \033[0;33mLEFT!, \033[0moffset: %f", front_avoidance_offset_steering_angle_);
+                // RCLCPP_INFO(this->get_logger(), "STEER \033[0;33mLEFT!, \033[0moffset: %f", front_avoidance_offset_steering_angle_);
             }
         }
         else if (obs_left_closest_x < obs_right_closest_x)
         {
             front_avoidance_offset_steering_angle_ = -max_steering_angle_ * 2;
-            RCLCPP_INFO(this->get_logger(), "FORCE STEER \033[0;33mRIGHT!, \033[0moffset: %f", front_avoidance_offset_steering_angle_);
+            // RCLCPP_INFO(this->get_logger(), "FORCE STEER \033[0;33mRIGHT!, \033[0moffset: %f", front_avoidance_offset_steering_angle_);
         }
         else if (obs_right_closest_x < obs_left_closest_x)
         {
             front_avoidance_offset_steering_angle_ = max_steering_angle_ * 2;
-            RCLCPP_INFO(this->get_logger(), "FORCE STEER \033[0;33mLEFT!, \033[0moffset: %f", front_avoidance_offset_steering_angle_);
+            // RCLCPP_INFO(this->get_logger(), "FORCE STEER \033[0;33mLEFT!, \033[0moffset: %f", front_avoidance_offset_steering_angle_);
         }
         else
         {

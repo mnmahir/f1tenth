@@ -94,6 +94,7 @@ public:
         load_waypoints();
 
         RCLCPP_INFO(this->get_logger(), "Pure pursuit node started");
+        RCLCPP_INFO(this->get_logger(), "Using waypoint: %s",waypoints_path);
     }
 
     // void pose_callback(const geometry_msgs::msg::PoseStamped::ConstPtr &pose_msg)

@@ -1,12 +1,12 @@
 /**:
   ros__parameters:
-    waypoints_path: "/home/mnmahir/ros_project/f1tenth/ws_robot/src/ugv_race/racelines/map_hijau.csv"
+    waypoints_path: "/media/mnmahir/WS_L/ros_h/f1tenth/ws_robot/src/ugv_race/racelines/f1tenth_route.csv"
     
     base_frame: "base_footprint"
     map_frame: "map"
     read_frame_pose: true    # If false will get pose of base relative to map from odom_topic instead of tf
     read_frame_pose_rate: 50
-    reverse_waypoints_order: true
+    reverse_waypoints_order: false
     odom_topic: "/odom/map"
     drive_topic: "/cmd_auto/drive"
     rviz_current_waypoint_topic: "/current_waypoint"
@@ -36,9 +36,9 @@
     min_lookahead: 0.2
     max_lookahead: 1.25 # lookahead when the car is going around max velocity
     lookahead_ratio: 1.0 # approximately the max velocity
-    K_p: 0.5
+    K_p: 0.7
     steering_limit: 22.9
-    velocity_percentage: 0.5 # the limit, can only do 1 lap with clean tires
+    velocity_percentage: 0.8 # the limit, can only do 1 lap with clean tires
 
 
 

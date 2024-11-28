@@ -4,7 +4,7 @@
     joy_axis: 4
 
     ittc_threshold: 0.3
-    ittc_foward_drive_scan_width: 0.3
+    ittc_foward_drive_scan_width: 0.28
     ittc_foward_drive_x_scan_offset: -0.3
     ittc_brake_release_delay: 50 # how long to wait in milliseconds (ms) before releasing the brake after the ITTC threshold is no longer exceeded
     force_stop_rectangular_region: [0.0, 0.15, -0.11, 0.11]
