@@ -153,6 +153,11 @@ private:
     }
     if (on != autonomous_) {
       autonomous_ = on;
+      // The safety brake may back the car out of a blocked spot only while it drives itself: never under the
+      // joystick or parked (ugv_bringup util.yaml keeps it off otherwise)
+      if (brake_client_->service_is_ready()) {
+        brake_client_->set_parameters({rclcpp::Parameter("enable_recovery", on)});
+      }
       say(std::string(on ? "Autonomous engaged" : "Autonomous disengaged") + " (" + why + ")");
     }
     return true;

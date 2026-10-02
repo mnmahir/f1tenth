@@ -27,6 +27,7 @@ private:
 
     // variables
     double max_steering_angle_;
+    double min_avoidance_speed_ = 0.05;
     bool enabled_;
 
     // gap finding parameters
@@ -498,8 +499,8 @@ private:
         // Get the original steering angle
         original_steering_angle_ = drive_msg->drive.steering_angle;
 
-        // Modify the steering angle
-        if (drive_msg->drive.speed >= 0)
+        // Modify the steering angle, only while driving forwards: standing still it would just turn the wheels
+        if (drive_msg->drive.speed > min_avoidance_speed_)
         {
             original_steering_angle_ = std::clamp(original_steering_angle_ + front_avoidance_offset_steering_angle_, -max_steering_angle_, max_steering_angle_);
             modified_drive_msg.drive.steering_angle = std::clamp(original_steering_angle_ + side_avoidance_offset_steering_angle_, -max_steering_angle_, max_steering_angle_);
@@ -516,6 +517,7 @@ private:
     void dyn_conf_timer_callback()
     {
         enabled_ = this->get_parameter("enabled").as_bool();
+        min_avoidance_speed_ = this->get_parameter("min_avoidance_speed").as_double();
         max_steering_angle_ = this->get_parameter("max_steering_angle").as_double() * M_PI / 180.0;
         side_wall_width_ = this->get_parameter("side_wall_width").as_double();
         side_wall_length_ = this->get_parameter("side_wall_length").as_double();
@@ -533,6 +535,7 @@ public:
         this->declare_parameter("drive_topic_sub", "/ackermann_cmd");
         this->declare_parameter("drive_topic_pub", "/ackermann_cmd_filtered");
         this->declare_parameter("enabled", true);                             // false: pass commands through unchanged (switchable from the UI)
+        this->declare_parameter("min_avoidance_speed", 0.05);                 // m/s: below this the steering is left alone
         this->declare_parameter("max_steering_angle", 22.9);                  // maximum steering angle (degrees)
         this->declare_parameter("bubble_radius", 0.281);                      // radius of the safety bubble around the closest obstacle
         this->declare_parameter("scan_rejection_distance", 3.0);              // reject far points (meters)
@@ -563,6 +566,7 @@ public:
         side_avoidance_offset_steering_angle_ = 0.0;
         front_avoidance_offset_steering_angle_ = 0.0;
         enabled_ = this->get_parameter("enabled").as_bool();
+        min_avoidance_speed_ = this->get_parameter("min_avoidance_speed").as_double();
         max_steering_angle_ = this->get_parameter("max_steering_angle").as_double() * M_PI / 180.0;
         bubble_radius_ = this->get_parameter("bubble_radius").as_double();
         lidar_ray_fov_ = this->get_parameter("lidar_ray_fov").as_double() * M_PI / 180.0;

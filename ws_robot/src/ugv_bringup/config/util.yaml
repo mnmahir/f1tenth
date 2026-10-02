@@ -9,7 +9,7 @@
     ittc_brake_release_delay: 50 # how long to wait in milliseconds (ms) before releasing the brake after the ITTC threshold is no longer exceeded
     force_stop_rectangular_region: [0.0, 0.15, -0.11, 0.11]
     force_stop_min_ray: 5 # minimum number of rays that must be in the force stop region to trigger a stop
-    enable_recovery: true  # enable recovery from force stop
+    enable_recovery: false  # backing out of a force stop: f1tenth_tools drive_coordinator turns it on while autonomous is engaged
     recovery_timeout: 500 # how long to wait in milliseconds (ms) before attempting to recover from a force stop
     recovery_backup_speed: -0.75 # speed to drive backwards during recovery
     recovery_backup_duration: 700 # how long to drive backwards during recovery

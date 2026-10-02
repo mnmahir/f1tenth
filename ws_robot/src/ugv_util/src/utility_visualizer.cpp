@@ -180,6 +180,9 @@ private:
 
     void publish_visualization()
     {
+        if (!rclcpp::ok()) {
+            return;  // shutting down: the middleware may already be closed
+        }
         publish_trajectory();
         publish_force_stop_boundary();
         publish_ittc_foward_drive_scan_boundary();
