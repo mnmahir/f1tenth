@@ -501,6 +501,8 @@ public:
   void loadHistory();
 
 private:
+  void loadRosoutHistory(int attempt);
+  void loadConsoleHistory(int attempt);
   void onRosout(const std::vector<Log> & batch);
   void onConsole(const std::vector<Log> & batch);
   void appendConsole(const Log & line);

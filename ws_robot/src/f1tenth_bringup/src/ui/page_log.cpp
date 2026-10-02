@@ -10,6 +10,7 @@
 #include <QScrollBar>
 #include <QTabWidget>
 #include <QTableView>
+#include <QTimer>
 #include <QVBoxLayout>
 
 #include <algorithm>
@@ -378,18 +379,41 @@ void LogPage::onRosout(const std::vector<Log> & batch)
   }
 }
 
+// The latest lines only: they arrive quickly even over a slow link, and newer ones stream in live
+constexpr int kHistoryLines = 500;
+// The car always has some history (the supervisor logs its own start), so none means the request failed, e.g.
+// while the link was too slow for a moment: ask again a few times, further apart each time
+constexpr int kHistoryAttempts = 4;
+
 void LogPage::loadHistory()
 {
   history_loaded_ = true;
-  ros_->rosoutHistory(5000, [this](const std::vector<Log> & lines) {
-      if (!lines.empty()) {
-        model_->setHistory(lines);
-        onRosout({});  // refreshes the node list
-        table_->scrollToBottom();
-      }
-    });
-  ros_->consoleHistory(3000, [this](const std::vector<Log> & lines) {
+  loadRosoutHistory(0);
+  loadConsoleHistory(0);
+}
+
+void LogPage::loadRosoutHistory(int attempt)
+{
+  ros_->rosoutHistory(kHistoryLines, [this, attempt](const std::vector<Log> & lines) {
       if (lines.empty()) {
+        if (attempt + 1 < kHistoryAttempts) {
+          QTimer::singleShot(10000 * (attempt + 1), this, [this, attempt]() {loadRosoutHistory(attempt + 1);});
+        }
+        return;
+      }
+      model_->setHistory(lines);
+      onRosout({});  // refreshes the node list
+      table_->scrollToBottom();
+    });
+}
+
+void LogPage::loadConsoleHistory(int attempt)
+{
+  ros_->consoleHistory(kHistoryLines, [this, attempt](const std::vector<Log> & lines) {
+      if (lines.empty()) {
+        if (attempt + 1 < kHistoryAttempts) {
+          QTimer::singleShot(10000 * (attempt + 1), this, [this, attempt]() {loadConsoleHistory(attempt + 1);});
+        }
         return;
       }
       // Keep live lines that are newer than the history

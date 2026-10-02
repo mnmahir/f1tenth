@@ -181,7 +181,9 @@ private:
   void call(const std::string & service, std::shared_ptr<typename ServiceT::Request> request,
     std::function<void(std::shared_ptr<typename ServiceT::Response>)> on_response,
     std::function<void(const QString &)> on_error, int timeout_ms = 5000);
-  void whenReady(std::function<bool()> ready, std::function<void()> go, std::function<void()> fail);
+  // Runs go once the service is in the graph, or fail after max_wait_ms
+  void whenReady(std::function<bool()> ready, std::function<void()> go, std::function<void()> fail,
+    int max_wait_ms = 5000);
   void trigger(const std::string & service, ReplyFn done, int timeout_ms = 5000);
   void setBool(const std::string & service, bool value, ReplyFn done, int timeout_ms = 5000);
   void saveFile(const std::string & service, const QString & name, ReplyFn done, int timeout_ms = 10000);

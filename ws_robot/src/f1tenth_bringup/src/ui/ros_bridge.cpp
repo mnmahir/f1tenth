@@ -26,6 +26,8 @@ namespace f1ui
 namespace
 {
 constexpr char kSupervisor[] = "/f1tenth/supervisor";
+// Log history can be a few hundred kB: allow for a slow link (a phone hotspot managed about 10 kB/s)
+constexpr int kHistoryTimeoutMs = 30000;
 
 std::string str(const QString & s) {return s.toStdString();}
 QString qstr(const std::string & s) {return QString::fromStdString(s);}
@@ -344,7 +346,7 @@ void RosBridge::call(const std::string & service, std::shared_ptr<typename Servi
       if (!finished->exchange(true)) {
         on_error(what + " is not available (is the car running?)");
       }
-    });
+    }, timeout_ms);
   QTimer::singleShot(timeout_ms, this, [finished, on_error, what]() {
       if (!finished->exchange(true)) {
         on_error(what + " did not answer");
@@ -352,21 +354,22 @@ void RosBridge::call(const std::string & service, std::shared_ptr<typename Servi
     });
 }
 
-void RosBridge::whenReady(std::function<bool()> ready, std::function<void()> go, std::function<void()> fail)
+void RosBridge::whenReady(std::function<bool()> ready, std::function<void()> go, std::function<void()> fail,
+  int max_wait_ms)
 {
   if (ready()) {
     go();
     return;
   }
-  // Discovery can lag right after start-up: give the service up to 2 s to appear
+  // Discovery can lag right after start-up, longer over a slow link: give the service time to appear
   auto * timer = new QTimer(this);
   auto waited = std::make_shared<int>(0);
-  connect(timer, &QTimer::timeout, this, [timer, waited, ready, go, fail]() {
+  connect(timer, &QTimer::timeout, this, [timer, waited, ready, go, fail, max_wait_ms]() {
       if (ready()) {
         timer->deleteLater();
         timer->stop();
         go();
-      } else if ((*waited += 100) >= 2000) {
+      } else if ((*waited += 100) >= max_wait_ms) {
         timer->deleteLater();
         timer->stop();
         fail();
@@ -528,7 +531,7 @@ void RosBridge::consoleHistory(int max_lines, std::function<void(const std::vect
   req->max_lines = static_cast<uint32_t>(max_lines);
   call<Srv>(std::string(kSupervisor) + "/get_console", req,
     [done](Srv::Response::SharedPtr res) {done(res->lines);},
-    [done](const QString &) {done({});});
+    [done](const QString &) {done({});}, kHistoryTimeoutMs);
 }
 
 void RosBridge::rosoutHistory(int max_lines, std::function<void(const std::vector<Log> &)> done)
@@ -538,7 +541,7 @@ void RosBridge::rosoutHistory(int max_lines, std::function<void(const std::vecto
   req->max_lines = static_cast<uint32_t>(max_lines);
   call<Srv>(std::string(kSupervisor) + "/get_rosout", req,
     [done](Srv::Response::SharedPtr res) {done(res->lines);},
-    [done](const QString &) {done({});});
+    [done](const QString &) {done({});}, kHistoryTimeoutMs);
 }
 
 // ---- driving ----
