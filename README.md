@@ -1,6 +1,6 @@
 # F1Tenth
 
-ROS 2 Jazzy stack (Ubuntu 24.04, Jetson Orin NX) for the F1TENTH car. Middleware: `rmw_zenoh_cpp`.
+ROS 2 Jazzy stack (Ubuntu 24.04, Raspberry Pi 5) for the F1TENTH car. Middleware: `rmw_zenoh_cpp`.
 
 Everything is driven from one app, the **F1TENTH Pit Wall** UI. It runs on the car's screen or on a laptop. Users
 never start nodes or launch files: the car's software starts at boot and waits, and the UI tells it what to run.
@@ -58,20 +58,60 @@ The Hokuyo UST-10LX is at `192.168.0.10` (see `ugv_bringup/config/sensor/lidar_h
 `interface_bringup.bash` gives the Ethernet port `192.168.0.15/24` (NetworkManager connection `lidar-ethernet`).
 
 ## The UI on a laptop
-With Ubuntu 24.04, ROS 2 Jazzy desktop and `ros-jazzy-rmw-zenoh-cpp`:
-```bash
-git clone -b jazzy https://github.com/mnmahir/f1tenth.git ~/f1tenth
-cd ~/f1tenth/ws_robot && colcon build --packages-select f1tenth_bringup ugv_description
-bash ~/f1tenth/scripts/install_ui_shortcut.bash   # or run ~/f1tenth/scripts/pit_wall.bash
-```
-Build the same version as the car: the UI and the car must share the same messages. `ugv_description` gives the 3D
-car model.
+Any number of laptops can run Pit Wall and connect to the car at the same time.
 
-**Finding the car.** Each car announces itself on the local network (UDP 47821) with its name, battery and session,
-and the UI lists them. On another network (e.g. a VPN such as Tailscale), type the car's address in the list: the UI
-asks the car directly (UDP 47820). Either way the UI connects as a Zenoh client of the router the car runs (TCP
-7447), so the laptop only has to reach that port on the car, whatever other networks or firewall it has.
-`pit_wall.bash --car <name or address>` connects without asking; `--pick` always shows the list.
+### Install
+A laptop needs Ubuntu 24.04 and ROS 2 Jazzy Desktop
+([install guide](https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html)). The repository is private:
+ask the owner to add your GitHub account (Settings → Collaborators), then:
+```bash
+sudo apt install -y ros-jazzy-desktop ros-jazzy-rmw-zenoh-cpp ros-dev-tools gh
+gh auth login                       # sign in to GitHub
+gh repo clone mnmahir/f1tenth ~/f1tenth
+sudo rosdep init                    # once per computer; ignore "already initialized"
+rosdep update
+cd ~/f1tenth/ws_robot
+rosdep install -y --ignore-src --rosdistro jazzy --from-paths src/f1tenth_bringup src/ugv_description
+source /opt/ros/jazzy/setup.bash
+colcon build --packages-select f1tenth_bringup ugv_description --cmake-args -DCMAKE_BUILD_TYPE=Release
+bash ~/f1tenth/scripts/install_ui_shortcut.bash
+```
+Then open **F1TENTH Pit Wall** from the applications menu (or run `~/f1tenth/scripts/pit_wall.bash`). Without Qt and
+RViz's development files the build still succeeds but leaves the UI out: `rosdep install` gets them.
+`ugv_description` gives the 3D car model.
+
+The UI and the car must share the same messages, so keep the laptop on the car's version. After the car is updated:
+```bash
+cd ~/f1tenth && git pull
+cd ws_robot && source /opt/ros/jazzy/setup.bash
+colcon build --packages-select f1tenth_bringup ugv_description --cmake-args -DCMAKE_BUILD_TYPE=Release
+```
+
+### Connecting to the car
+- **Same network as the car** (Wi-Fi or a phone hotspot): the car announces itself every second (UDP 47821) and
+  shows up in Pit Wall's list. Pick it and press **CONNECT**. There's no password: anyone on the network with Pit
+  Wall can connect.
+- **Car not in the list**: some networks block those announcements. Type the car's address and press **FIND** (the
+  UI asks the car directly, UDP 47820). A connected Pit Wall shows the address when you click the car's name in the
+  top bar.
+- **Nothing gets through**: guest, campus and café Wi-Fi often stop devices from talking to each other. Use a phone
+  hotspot that both the car and the laptops join, or Tailscale.
+- **From anywhere, with Tailscale**: the car's owner shares it from the Tailscale admin console (Machines → the car
+  → Share). Install Tailscale, accept the share, and type the car's Tailscale address (100.x.y.z) in the list.
+
+Either way the UI connects as a Zenoh client of the router the car runs (TCP 7447), so the laptop only has to reach
+that port on the car, whatever other networks or firewall it has. `pit_wall.bash --car <name or address>` connects
+without asking; `--pick` always shows the list.
+
+The car joins only Wi-Fi networks saved on it. To add one (on the car, or over SSH while it's on a network it knows):
+`sudo nmcli device wifi connect "<network>" password "<password>"`.
+
+### Several people
+Everyone connected sees the same car and has full control: sessions, **E-STOP**, parameters, deleting maps and paths
+(they go to a trash folder on the car), powering off. Agree who's in charge. The joystick is paired with the car, so
+whoever holds it drives and has the **RB** kill switch. **ENGAGE AUTONOMOUS** also works from a Pit Wall when no
+joystick is connected, and then only **E-STOP** stops the car: keep someone at the car whenever a session with a path
+runs.
 
 **Several cars.** Every car runs in its own ROS domain (set by `install_car_service.bash`; this car is `f1` on
 domain 43). The UI joins only the domain of the car you pick, so it can't see or drive any other car. Give cars on
