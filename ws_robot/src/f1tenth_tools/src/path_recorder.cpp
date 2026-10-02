@@ -2,6 +2,7 @@
 // (x,y,speed) in paths_dir. Speeds are what the car actually did, or a constant.
 #include <chrono>
 #include <cmath>
+#include <cstdio>
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -29,12 +30,31 @@ public:
     map_frame_ = declare_parameter<std::string>("map_frame", "map");
     base_frame_ = declare_parameter<std::string>("base_frame", "base_footprint");
     spacing_ = declare_parameter<double>("spacing", 0.10);
-    speed_mode_ = declare_parameter<std::string>("speed_mode", "recorded");  // recorded | constant
-    constant_speed_ = declare_parameter<double>("constant_speed", 2.0);
-    min_speed_ = declare_parameter<double>("min_speed", 0.5);
+    // Read when saving, so the Pit Wall can set them just before
+    declare_parameter<std::string>("speed_mode", "recorded");  // recorded | constant
+    declare_parameter<double>("constant_speed", 2.0);
+    declare_parameter<double>("min_speed", 0.5);
     paths_dir_ = ft::expand_user(declare_parameter<std::string>("paths_dir", "~/f1tenth/data/paths"));
     map_name_ = declare_parameter<std::string>("map_name", "");  // the session's map, saved with each path
     double rate = declare_parameter<double>("rate", 20.0);
+    param_cb_ = add_on_set_parameters_callback([](const std::vector<rclcpp::Parameter> & params) {
+      rcl_interfaces::msg::SetParametersResult result;
+      result.successful = true;
+      for (const auto & p : params) {
+        if (p.get_name() == "speed_mode" && (p.get_type() != rclcpp::ParameterType::PARAMETER_STRING ||
+          (p.as_string() != "recorded" && p.as_string() != "constant")))
+        {
+          result.successful = false;
+          result.reason = "speed_mode must be recorded or constant";
+        } else if ((p.get_name() == "constant_speed" || p.get_name() == "min_speed") &&
+          (p.get_type() != rclcpp::ParameterType::PARAMETER_DOUBLE || p.as_double() <= 0.0))
+        {
+          result.successful = false;
+          result.reason = p.get_name() + " must be above 0 m/s";
+        }
+      }
+      return result;
+    });
 
     tf_buffer_ = std::make_unique<tf2_ros::Buffer>(get_clock());
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
@@ -150,23 +170,28 @@ private:
       message = "A path named '" + name + "' already exists";
       return false;
     }
+    bool constant = get_parameter("speed_mode").as_string() == "constant";
+    double constant_speed = get_parameter("constant_speed").as_double();
+    double min_speed = get_parameter("min_speed").as_double();
     auto points = points_;
     for (auto & p : points) {
-      p.v = speed_mode_ == "constant" ? constant_speed_ : std::max(p.v, min_speed_);
+      p.v = constant ? constant_speed : std::max(p.v, min_speed);
     }
     if (!ft::save_path_csv(file, points, message)) {
       return false;
     }
     ft::save_path_info(file, {map_name_, "recorded", "", ""});
-    message = "Saved lap '" + name + "' (" + std::to_string(points.size()) + " points" +
+    char speeds[48];
+    std::snprintf(speeds, sizeof(speeds), constant ? "%.1f m/s throughout" : "speeds as driven", constant_speed);
+    message = "Saved lap '" + name + "' (" + std::to_string(points.size()) + " points, " + speeds +
       (map_name_.empty() ? "" : ", on " + map_name_) + ")";
     message_ = message;
     RCLCPP_INFO(get_logger(), "%s", message.c_str());
     return true;
   }
 
-  std::string map_frame_, base_frame_, speed_mode_, paths_dir_, map_name_, message_;
-  double spacing_, constant_speed_, min_speed_;
+  std::string map_frame_, base_frame_, paths_dir_, map_name_, message_;
+  double spacing_;
   bool recording_ = false;
   double speed_ = 0.0, length_ = 0.0, max_speed_ = 0.0;
   std::vector<ft::PathPoint> points_;
@@ -179,6 +204,7 @@ private:
   rclcpp::Service<Trigger>::SharedPtr start_srv_, stop_srv_, clear_srv_;
   rclcpp::Service<f1tenth_bringup::srv::SaveFile>::SharedPtr save_srv_;
   rclcpp::TimerBase::SharedPtr timer_, status_timer_;
+  rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr param_cb_;
 };
 
 int main(int argc, char ** argv)

@@ -457,14 +457,17 @@ void HomePage::onSupervisor(const SupervisorState & state)
     fillPathCombo(path_combo_, pathsForMap(state, map_now));
   }
   QString mode = QString::fromStdString(state.mode);
-  if (!have_state_) {
-    // Start from what the car is doing
+  // Start from what the car is doing, and follow sessions started elsewhere (DRIVE THIS LAP, another pit wall).
+  // Standby keeps the last picks, ready to start again.
+  QString session = mode + "|" + QString::fromStdString(state.map) + "|" + QString::fromStdString(state.path);
+  if (!have_state_ || (session != running_session_ && mode != "idle")) {
     if (mode != "idle") {
       selectMode(mode);
     }
     selectMap(QString::fromStdString(state.map));
     selectPath(QString::fromStdString(state.path));
   }
+  running_session_ = session;
   for (auto & [key, tile] : tiles_) {
     tile->setRunning(key == mode);
   }

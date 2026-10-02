@@ -122,6 +122,7 @@ private:
   QString path_map_filter_;   // map the path list was last built for
   SupervisorState state_;
   bool have_state_ = false;
+  QString running_session_;  // mode|map|path at the last update
   QString preview_map_, preview_path_;
   std::map<QString, MapPreview> preview_cache_;
 };
@@ -391,6 +392,7 @@ private:
   void fetchThumbnails();
   void rename();
   void remove();
+  void clearDetail();
 
   QListWidget * maps_ = nullptr;
   QListWidget * paths_ = nullptr;
@@ -403,6 +405,7 @@ private:
   QString kind_;   // map | path
   QString selected_;
   QString shown_map_;
+  QString renamed_from_, renamed_to_;  // the detail follows a rename once the car lists the new name
   QStringList map_names_, path_names_;
   QSet<QString> thumbnails_;
   bool active_ = false;

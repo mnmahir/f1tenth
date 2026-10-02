@@ -5,6 +5,7 @@
 #include <QMessageBox>
 #include <QPainter>
 #include <QPushButton>
+#include <QSignalBlocker>
 #include <QVBoxLayout>
 
 #include <algorithm>
@@ -181,6 +182,10 @@ void GaragePage::onSupervisor(const SupervisorState & state)
   if (maps != map_names_) {
     map_names_ = maps;
     QString current = maps_->currentItem() ? maps_->currentItem()->text() : QString();
+    if (current == renamed_from_ && !maps.contains(current)) {
+      current = renamed_to_;
+    }
+    QSignalBlocker block(maps_);  // rebuilding isn't the user picking a map
     maps_->clear();
     for (const auto & name : maps) {
       auto * item = new QListWidgetItem(placeholderThumbnail(), name);
@@ -198,6 +203,10 @@ void GaragePage::onSupervisor(const SupervisorState & state)
   if (paths != path_names_) {
     path_names_ = paths;
     QString current = paths_->currentItem() ? paths_->currentItem()->text() : QString();
+    if (current == renamed_from_ && !paths.contains(current)) {
+      current = renamed_to_;
+    }
+    QSignalBlocker block(paths_);
     paths_->clear();
     for (const auto & name : paths) {
       QString made_on = pathMap(state, name);
@@ -209,6 +218,18 @@ void GaragePage::onSupervisor(const SupervisorState & state)
       if (name == current) {
         paths_->setCurrentItem(item);
       }
+    }
+  }
+  // The shown map or path was renamed, or deleted from another Pit Wall
+  const QStringList & names = kind_ == "map" ? maps : paths;
+  if (!selected_.isEmpty() && !names.contains(selected_)) {
+    QString renamed = selected_ == renamed_from_ && names.contains(renamed_to_) ? renamed_to_ : QString();
+    if (renamed.isEmpty()) {
+      clearDetail();
+    } else if (kind_ == "map") {
+      showMap(renamed);
+    } else {
+      showPath(renamed);
     }
   }
 }
@@ -312,6 +333,8 @@ void GaragePage::rename()
   if (!ok || name.isEmpty() || name == selected_) {
     return;
   }
+  renamed_from_ = selected_;
+  renamed_to_ = name;
   ros_->fileOp(kind_, "rename", selected_, name, report());
 }
 
@@ -322,7 +345,11 @@ void GaragePage::remove()
   {
     return;
   }
-  ros_->fileOp(kind_, "delete", selected_, QString(), report());
+  ros_->fileOp(kind_, "delete", selected_, QString(), report());  // the detail clears once the car's list drops it
+}
+
+void GaragePage::clearDetail()
+{
   title_->setText("Select a map or a path");
   info_->clear();
   preview_->clearMap();

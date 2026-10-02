@@ -151,6 +151,10 @@ HudStrip::HudStrip(RosBridge * ros, QWidget * parent)
       if (!car) {
         Telemetry offline;
         onTelemetry(offline);
+        // Standby or out of reach: nothing runs on the car, which isn't a fault
+        flags_->setFlag("vesc", "VESC", theme::text3, false);
+        flags_->setFlag("joy", "JOYSTICK", theme::text3, false);
+        flags_->setFlag("loc", "LOCALIZED", theme::green, false);
       }
     });
   connect(ros_, &RosBridge::parameterEvent, this, [this](const ParameterEvent & e) {
@@ -604,10 +608,10 @@ DriverAidsCard::DriverAidsCard(RosBridge * ros, QWidget * parent)
         Q_EMIT message(ok ? Level::Ok : Level::Error, text);
       });
     });
-  auto bind_toggle = [this](Toggle * toggle, const QString & node, const QString & what) {
-      connect(toggle, &Toggle::clicked, this, [this, toggle, node, what](bool on) {
+  auto bind_toggle = [this](Toggle * toggle, const QString & node, const QString & what, const QString & does) {
+      connect(toggle, &Toggle::clicked, this, [this, toggle, node, what, does](bool on) {
         if (!on && QMessageBox::warning(this, "Turn off " + what.toLower() + "?",
-          what + " stops the car before it hits something. Turn it off only on a clear track.",
+          what + " " + does + ". Turn it off only on a clear track.",
           QMessageBox::Cancel | QMessageBox::Ok, QMessageBox::Cancel) != QMessageBox::Ok)
         {
           toggle->setChecked(true);
@@ -625,8 +629,8 @@ DriverAidsCard::DriverAidsCard(RosBridge * ros, QWidget * parent)
         });
       });
     };
-  bind_toggle(safety_, kSafetyNode, "Collision brake");
-  bind_toggle(avoidance_, kAvoidanceNode, "Obstacle avoidance");
+  bind_toggle(safety_, kSafetyNode, "Collision brake", "stops the car before it hits something");
+  bind_toggle(avoidance_, kAvoidanceNode, "Obstacle avoidance", "steers the car around obstacles in its way");
   // Sliders apply shortly after the last change, whether dragged, scrolled or moved with the keys
   auto debounce = [this](QSlider * slider, std::function<void()> apply) {
       auto * timer = new QTimer(this);
@@ -1387,8 +1391,9 @@ void SessionPage::applyLayerDefaults(const QString & mode)
     return;
   }
   using L = SceneView::Layer;
+  bool live = mode != "idle";  // in standby the last scan would sit there frozen
   std::map<L, bool> on = {
-    {L::Grid, true}, {L::Map, true}, {L::Lidar, true}, {L::Car, true}, {L::Trail, true}, {L::Safety, true},
+    {L::Grid, true}, {L::Map, true}, {L::Lidar, live}, {L::Car, true}, {L::Trail, true}, {L::Safety, live},
     {L::Path, mode == "manual" || mode == "path"}, {L::Follower, mode == "manual"},
     {L::Recording, mode == "path"}, {L::Raceline, mode == "path"}};
   for (const auto & [layer, visible] : on) {
