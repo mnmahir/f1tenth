@@ -16,6 +16,7 @@ class QAbstractButton;
 class QButtonGroup;
 class QComboBox;
 class QDoubleSpinBox;
+class QGridLayout;
 class QLabel;
 class QLineEdit;
 class QListWidget;
@@ -437,6 +438,7 @@ private:
   void onDiagnostics(const DiagnosticArray & diagnostics);
   void onNodes(const QStringList & nodes);
   void updateHealth();
+  void layoutTiles();
 
   StatusLed * supervisor_led_ = nullptr;
   QLabel * supervisor_text_ = nullptr;
@@ -444,6 +446,8 @@ private:
   Toggle * bag_ = nullptr;
   QTableWidget * components_ = nullptr;
   std::map<QString, ValueTile *> tiles_;
+  std::vector<QString> tile_order_;
+  QGridLayout * tile_grid_ = nullptr;
   QTableWidget * rates_ = nullptr;
   QListWidget * nodes_ = nullptr;
   QLabel * nodes_count_ = nullptr;

@@ -69,8 +69,9 @@ car model.
 
 **Finding the car.** Each car announces itself on the local network (UDP 47821) with its name, battery and session,
 and the UI lists them. On another network (e.g. a VPN such as Tailscale), type the car's address in the list: the UI
-asks the car directly (UDP 47820) and connects through the Zenoh router the car runs (TCP 7447). `pit_wall.bash
---car <name or address>` connects without asking; `--pick` always shows the list.
+asks the car directly (UDP 47820). Either way the UI connects as a Zenoh client of the router the car runs (TCP
+7447), so the laptop only has to reach that port on the car, whatever other networks or firewall it has.
+`pit_wall.bash --car <name or address>` connects without asking; `--pick` always shows the list.
 
 **Several cars.** Every car runs in its own ROS domain (set by `install_car_service.bash`; this car is `f1` on
 domain 43). The UI joins only the domain of the car you pick, so it can't see or drive any other car. Give cars on
@@ -96,17 +97,17 @@ These load the map `ws_robot/src/ugv_race/maps/f1tenth/map.yaml` (override with 
 Terminals on the car use the car's domain (`~/.config/f1tenth/car.env`, sourced from `~/.bashrc`).
 
 ### RViz on another computer
-With the repository cloned as above, build the RViz configs and the car model, then use the car's domain and Zenoh
-settings:
+With the repository cloned as above, build the RViz configs and the car model, then join the car's domain as a client
+of its Zenoh router (`<car>`: its address, e.g. `f1.barracuda-barley.ts.net` over Tailscale or its IP on the local
+network):
 ```bash
 cd ~/f1tenth/ws_robot && colcon build --packages-select ugv_description ugv_analysis
 source /opt/ros/jazzy/setup.bash && source ~/f1tenth/ws_robot/install/setup.bash
-export ROS_DOMAIN_ID=43 RMW_IMPLEMENTATION=rmw_zenoh_cpp ZENOH_ROUTER_CHECK_ATTEMPTS=-1 ZENOH_CONFIG_OVERRIDE='listen/endpoints=["tcp/0.0.0.0:0"];scouting/multicast/enabled=true'
+export ROS_DOMAIN_ID=43 RMW_IMPLEMENTATION=rmw_zenoh_cpp ZENOH_ROUTER_CHECK_ATTEMPTS=-1 ZENOH_CONFIG_OVERRIDE='mode="client";scouting/multicast/enabled=false;connect/endpoints=["tcp/<car>:7447"]'
 ros2 launch ugv_analysis analysis_launch.py   # car view; slam_launch.py while mapping
 ```
-If that computer is also on other multicast networks (e.g. ZeroTier), limit discovery to the car's network by adding
-`;scouting/multicast/interface="<interface>"` (e.g. `enp129s0`) to `ZENOH_CONFIG_OVERRIDE`. Otherwise it also finds
-Zenoh peers there (log spam about `127.0.0.1` locators).
+Avoid joining as a Zenoh peer (multicast discovery) from a computer that is also on other networks: discovery uses
+one interface, and the car can't connect back to addresses it can't reach, so no data arrives.
 
 ---
 Pit wall UI and car software by Mahir Sehmi.

@@ -49,4 +49,4 @@ localization_monitor:
 
 system_monitor:
   ros__parameters:
-    wifi_interface: wlP1p1s0
+    wifi_interface: ""        # empty: the first wireless interface (wlan0 on a Raspberry Pi)

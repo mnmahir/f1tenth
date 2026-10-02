@@ -3,13 +3,15 @@
 // without its wheels turning, so while the wheels are stopped the yaw is held and the bias is learned; while
 // driving, the IMU's yaw changes are used minus that bias. Also reports the angular velocity in rad/s (the VESC
 // driver publishes deg/s).
+// "Stopped" comes from the motor speed in the VESC's state, which arrives from power-up. (/odom/wheel would do,
+// but vesc_to_odom publishes nothing until the first steering command, so a car that hasn't driven yet drifted.)
 #include <algorithm>
 #include <cmath>
 #include <memory>
 
 #include "rclcpp/rclcpp.hpp"
-#include "nav_msgs/msg/odometry.hpp"
 #include "sensor_msgs/msg/imu.hpp"
+#include "vesc_msgs/msg/vesc_state_stamped.hpp"
 
 namespace
 {
@@ -21,16 +23,16 @@ class ImuDriftCorrector : public rclcpp::Node
 public:
   ImuDriftCorrector() : Node("imu_drift_corrector")
   {
-    stationary_speed_ = declare_parameter<double>("stationary_speed", 0.02);  // m/s
+    stationary_erpm_ = declare_parameter<double>("stationary_erpm", 100.0);  // motor ERPM, about 0.02 m/s
     stationary_time_ = declare_parameter<double>("stationary_time", 0.5);     // s stopped before holding the yaw
     bias_time_constant_ = declare_parameter<double>("bias_time_constant", 10.0);  // s
     max_bias_ = declare_parameter<double>("max_bias", 0.05);                  // rad/s, larger is not a bias
     pub_ = create_publisher<sensor_msgs::msg::Imu>("/sensors/imu/corrected", 20);
-    odom_sub_ = create_subscription<nav_msgs::msg::Odometry>("/odom/wheel", 20,
-      [this](nav_msgs::msg::Odometry::SharedPtr odom) {
+    vesc_sub_ = create_subscription<vesc_msgs::msg::VescStateStamped>("/sensors/core", rclcpp::SensorDataQoS(),
+      [this](vesc_msgs::msg::VescStateStamped::SharedPtr vesc) {
         auto t = now();
         wheel_time_ = t;
-        if (std::abs(odom->twist.twist.linear.x) > stationary_speed_) {
+        if (std::abs(vesc->state.speed) > stationary_erpm_) {
           moving_time_ = t;
         }
       });
@@ -54,7 +56,7 @@ private:
       double dt = (stamp - last_stamp_).seconds();
       double change = wrap(raw_yaw - last_raw_yaw_);
       auto t = now();
-      // No wheel odometry: don't guess, pass the IMU through
+      // No motor speed (VESC not connected): don't guess, pass the IMU through
       bool wheels_known = (t - wheel_time_).seconds() < 0.5;
       bool stopped = wheels_known && (t - moving_time_).seconds() > stationary_time_;
       if (dt > 0.0 && dt < 0.5) {
@@ -86,12 +88,12 @@ private:
     pub_->publish(imu);
   }
 
-  double stationary_speed_, stationary_time_, bias_time_constant_, max_bias_;
+  double stationary_erpm_, stationary_time_, bias_time_constant_, max_bias_;
   bool started_ = false;
   double yaw_ = 0.0, last_raw_yaw_ = 0.0, bias_ = 0.0, rate_ = 0.0;
   rclcpp::Time last_stamp_, wheel_time_, moving_time_;
   rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr pub_;
-  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
+  rclcpp::Subscription<vesc_msgs::msg::VescStateStamped>::SharedPtr vesc_sub_;
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
 };
 

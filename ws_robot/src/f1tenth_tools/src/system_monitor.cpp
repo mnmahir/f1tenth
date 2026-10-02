@@ -1,5 +1,5 @@
-// Car health on /diagnostics: Jetson CPU/GPU load and temperatures, memory, disk, Wi-Fi signal, and the
-// publish rate of key topics against what they should be. Rates are measured here on the car so a remote UI
+// Car health on /diagnostics: CPU load and temperature, the GPU (Jetson) or the power supply (Raspberry Pi),
+// memory, disk, Wi-Fi signal, and the publish rate of key topics against what they should be. Rates are measured here on the car so a remote UI
 // does not have to subscribe to every sensor stream.
 #include <sys/statvfs.h>
 
@@ -11,6 +11,7 @@
 #include <fstream>
 #include <map>
 #include <memory>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -64,7 +65,7 @@ public:
   SystemMonitor() : Node("system_monitor")
   {
     hardware_id_ = declare_parameter<std::string>("hardware_id", "f1tenth");
-    wifi_interface_ = declare_parameter<std::string>("wifi_interface", "wlP1p1s0");
+    wifi_interface_ = declare_parameter<std::string>("wifi_interface", "");  // empty: the first wireless one
     auto topics = declare_parameter<std::vector<std::string>>("topics", std::vector<std::string>{
       "/scan", "/sensors/core", "/sensors/imu/raw", "/odom/wheel", "/odom/filtered", "/joy",
       "/camera/image_raw/compressed", "/f1tenth/telemetry"});
@@ -107,7 +108,11 @@ private:
     diagnostic_msgs::msg::DiagnosticArray array;
     array.header.stamp = now();
     array.status.push_back(cpu());
-    array.status.push_back(gpu());
+    for (auto optional : {gpu(), power()}) {
+      if (optional) {
+        array.status.push_back(*optional);
+      }
+    }
     array.status.push_back(memory());
     array.status.push_back(disk());
     array.status.push_back(wifi());
@@ -135,7 +140,8 @@ private:
     return s;
   }
 
-  DiagnosticStatus gpu()
+  // Jetson only
+  std::optional<DiagnosticStatus> gpu()
   {
     double load = -1.0;
     for (const char * f : {"/sys/devices/platform/gpu.0/load", "/sys/devices/platform/17000000.gpu/load"}) {
@@ -146,13 +152,62 @@ private:
     }
     double temp = zone_temp("gpu-thermal");
     if (load < 0) {
-      return status("gpu", DiagnosticStatus::OK, "not available");
+      return std::nullopt;
     }
     load /= 10.0;  // reported in 0.1 %
     uint8_t level = temp > 95 ? DiagnosticStatus::ERROR : (temp > 80 ? DiagnosticStatus::WARN : DiagnosticStatus::OK);
     auto s = status("gpu", level, fmt(load, 0) + "% " + fmt(temp, 0) + " C");
     s.values = {kv("usage", fmt(load)), kv("temperature", fmt(temp))};
     return s;
+  }
+
+  // Raspberry Pi only: under-voltage and throttling flags from the firmware, and the current the power supply
+  // offers. Without a 5 A supply the Pi also limits its USB ports (camera, VESC) to 600 mA together.
+  std::optional<DiagnosticStatus> power()
+  {
+    std::string raw = read_line("/sys/devices/platform/soc/soc:firmware/get_throttled");
+    if (raw.empty()) {
+      return std::nullopt;
+    }
+    unsigned long flags = std::strtoul(raw.c_str(), nullptr, 16);
+    bool low_now = flags & 0x1, low_before = flags & 0x10000;
+    bool throttled_now = flags & 0x6, throttled_before = flags & 0x60000;
+    bool hot_now = flags & 0x8;
+    uint8_t level = DiagnosticStatus::OK;
+    std::string message = "OK";
+    if (low_now) {
+      level = DiagnosticStatus::ERROR;
+      message = "Low voltage";
+    } else if (throttled_now || hot_now) {
+      level = DiagnosticStatus::WARN;
+      message = hot_now ? "Hot, slowed" : "Throttled";
+    } else if (low_before) {
+      level = DiagnosticStatus::WARN;
+      message = "Voltage dipped";
+    }
+    double max_current = device_tree_u32("/proc/device-tree/chosen/power/max_current");
+    bool usb_full = device_tree_u32("/proc/device-tree/chosen/power/usb_max_current_enable") > 0 || max_current >= 5000;
+    std::string supply = max_current > 0 ? fmt(max_current / 1000.0) + " A supply" : "";
+    if (max_current > 0 && !usb_full) {
+      supply += ", USB 0.6 A";
+    }
+    auto s = status("power", level, message);
+    s.values = {kv("supply", supply), kv("flags", "0x" + raw), kv("under_voltage", low_now ? "yes" : "no"),
+      kv("under_voltage_since_boot", low_before ? "yes" : "no"), kv("throttled", throttled_now ? "yes" : "no"),
+      kv("throttled_since_boot", throttled_before ? "yes" : "no"), kv("supply_max_current_ma", fmt(max_current, 0)),
+      kv("usb_current_limited", usb_full ? "no" : "yes")};
+    return s;
+  }
+
+  // Big-endian 32-bit value from the device tree, or -1
+  static double device_tree_u32(const std::string & file)
+  {
+    std::ifstream in(file, std::ios::binary);
+    unsigned char b[4];
+    if (!in.read(reinterpret_cast<char *>(b), 4)) {
+      return -1.0;
+    }
+    return static_cast<double>((uint32_t(b[0]) << 24) | (uint32_t(b[1]) << 16) | (uint32_t(b[2]) << 8) | b[3]);
   }
 
   DiagnosticStatus memory()
@@ -189,23 +244,31 @@ private:
 
   DiagnosticStatus wifi()
   {
+    // The configured interface, else the first wireless one (wlan0 on a Raspberry Pi, wlP1p1s0 on a Jetson)
     std::ifstream in("/proc/net/wireless");
-    std::string line;
+    std::string line, iface, chosen;
+    double quality = 0.0, level_dbm = 0.0;
     while (std::getline(in, line)) {
       std::istringstream ss(line);
-      std::string iface;
-      ss >> iface;
-      if (iface == wifi_interface_ + ":") {
-        std::string status_field;
-        double quality, level_dbm;
-        ss >> status_field >> quality >> level_dbm;
-        uint8_t lvl = level_dbm < -80 ? DiagnosticStatus::ERROR : (level_dbm < -70 ? DiagnosticStatus::WARN : DiagnosticStatus::OK);
-        auto s = status("wifi", lvl, fmt(level_dbm, 0) + " dBm");
-        s.values = {kv("interface", wifi_interface_), kv("signal_dbm", fmt(level_dbm, 0)), kv("quality", fmt(quality, 0) + "/70")};
-        return s;
+      std::string status_field;
+      double q, l;
+      if (!(ss >> iface) || iface.back() != ':' || !(ss >> status_field >> q >> l)) {
+        continue;  // header lines
+      }
+      iface.pop_back();
+      if (chosen.empty() || iface == wifi_interface_) {
+        chosen = iface;
+        quality = q;
+        level_dbm = l;
       }
     }
-    return status("wifi", DiagnosticStatus::WARN, wifi_interface_ + " not connected");
+    if (chosen.empty() || level_dbm < -110.0 || level_dbm >= 0.0) {
+      return status("wifi", DiagnosticStatus::WARN, (chosen.empty() ? std::string("Wi-Fi") : chosen) + " not connected");
+    }
+    uint8_t lvl = level_dbm < -80 ? DiagnosticStatus::ERROR : (level_dbm < -70 ? DiagnosticStatus::WARN : DiagnosticStatus::OK);
+    auto s = status("wifi", lvl, fmt(level_dbm, 0) + " dBm");
+    s.values = {kv("interface", chosen), kv("signal_dbm", fmt(level_dbm, 0)), kv("quality", fmt(quality, 0) + "/70")};
+    return s;
   }
 
   DiagnosticStatus thermal()

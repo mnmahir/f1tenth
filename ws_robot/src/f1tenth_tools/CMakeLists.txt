@@ -37,7 +37,7 @@ target_link_libraries(raceline_optimizer ${YAML_TARGET})
 add_tool(lap_timer rclcpp f1tenth_bringup nav_msgs std_srvs tf2 tf2_ros)
 add_tool(localization_monitor rclcpp f1tenth_bringup nav_msgs sensor_msgs geometry_msgs std_srvs tf2 tf2_ros)
 add_tool(mjpeg_camera rclcpp sensor_msgs)
-add_tool(imu_drift_corrector rclcpp nav_msgs sensor_msgs)
+add_tool(imu_drift_corrector rclcpp sensor_msgs vesc_msgs)
 add_tool(system_monitor rclcpp diagnostic_msgs)
 
 install(DIRECTORY include/ DESTINATION include)

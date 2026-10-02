@@ -409,10 +409,15 @@ void configureMiddleware(const CarInfo & car)
     qputenv("F1TENTH_USER_ZENOH_OVERRIDE", qgetenv("ZENOH_CONFIG_OVERRIDE"));
   }
   QByteArray zenoh = qgetenv("F1TENTH_USER_ZENOH_OVERRIDE");
-  if (car.remote && car.router_port > 0) {
-    // Not on the car's network: go through the router on the car
-    zenoh = QString("listen/endpoints=[\"tcp/0.0.0.0:0\"];scouting/multicast/enabled=false;"
-      "connect/endpoints=[\"tcp/%1:%2\"]").arg(car.address).arg(car.router_port).toUtf8();
+  if (car.router_port > 0 && !QHostAddress(car.address).isNull()) {
+    // A client of the Zenoh router the car runs: one TCP connection to the car carries everything, on whatever
+    // network the car is reached through and past this computer's firewall. As a peer, this computer would
+    // advertise all its addresses for the car's nodes to connect back to, and if the first ones are unreachable
+    // from the car (this computer also on another network) no data arrives; multicast discovery uses one
+    // interface, which may not be the car's.
+    QString host = car.address.contains(':') ? "[" + car.address + "]" : car.address;
+    zenoh = QString("mode=\"client\";scouting/multicast/enabled=false;connect/endpoints=[\"tcp/%1:%2\"]")
+      .arg(host).arg(car.router_port).toUtf8();
   } else if (zenoh.isEmpty()) {
     zenoh = "listen/endpoints=[\"tcp/0.0.0.0:0\"];scouting/multicast/enabled=true";
   }

@@ -144,20 +144,21 @@ SystemPage::SystemPage(RosBridge * ros, QWidget * parent)
   components->body()->addWidget(components_);
   middle->addWidget(components, 3);
   auto * health = new Card("Car health");
-  auto * grid = new QGridLayout();
-  grid->setHorizontalSpacing(18);
-  grid->setVerticalSpacing(12);
-  const std::pair<const char *, const char *> tiles[] = {
-    {"cpu", "CPU"}, {"gpu", "GPU"}, {"memory", "Memory"}, {"disk", "Disk"}, {"wifi", "Wi-Fi"}, {"thermal", "Hottest"}};
-  int i = 0;
+  tile_grid_ = new QGridLayout();
+  tile_grid_->setHorizontalSpacing(18);
+  tile_grid_->setVerticalSpacing(12);
+  const std::pair<const char *, const char *> tiles[] = {{"cpu", "CPU"}, {"gpu", "GPU"}, {"power", "Power"},
+    {"memory", "Memory"}, {"disk", "Disk"}, {"wifi", "Wi-Fi"}, {"thermal", "Hottest"}};
   for (const auto & [key, caption] : tiles) {
-    auto * tile = new ValueTile(caption);
+    auto * tile = new ValueTile(caption, QString(), health);
     tile->setValuePixelSize(24);
+    // A car reports one of these: the GPU on a Jetson, the power supply on a Raspberry Pi
+    tile->setVisible(QString(key) != "gpu" && QString(key) != "power");
     tiles_[key] = tile;
-    grid->addWidget(tile, i / 2, i % 2);
-    ++i;
+    tile_order_.push_back(key);
   }
-  health->body()->addLayout(grid);
+  layoutTiles();
+  health->body()->addLayout(tile_grid_);
   health->body()->addStretch(1);
   middle->addWidget(health, 2);
   root->addLayout(middle, 3);
@@ -281,6 +282,20 @@ void SystemPage::onSupervisor(const SupervisorState & state)
   onNodes(graph_);
 }
 
+// Two columns of the tiles this car reports, without gaps
+void SystemPage::layoutTiles()
+{
+  int i = 0;
+  for (const auto & key : tile_order_) {
+    ValueTile * tile = tiles_[key];
+    tile_grid_->removeWidget(tile);
+    if (!tile->isHidden()) {
+      tile_grid_->addWidget(tile, i / 2, i % 2);
+      ++i;
+    }
+  }
+}
+
 void SystemPage::onDiagnostics(const DiagnosticArray & diagnostics)
 {
   int worst = 0;
@@ -300,6 +315,10 @@ void SystemPage::onDiagnostics(const DiagnosticArray & diagnostics)
         continue;
       }
       ValueTile * tile = it->second;
+      if (tile->isHidden()) {
+        tile->setVisible(true);
+        layoutTiles();
+      }
       QString usage = value(status, "usage");
       QString temperature = value(status, "temperature");
       if (key == "cpu" || key == "gpu") {
@@ -310,6 +329,10 @@ void SystemPage::onDiagnostics(const DiagnosticArray & diagnostics)
         tile->setValue(QString::number(usage.toDouble(), 'f', 0) + "%", color);
         tile->setDetail(message);
         tile->setBar(usage.toDouble() / 100.0, color);
+      } else if (key == "power") {
+        tile->setValue(message, color);
+        tile->setDetail(value(status, "supply"));
+        tile->setBar(-1.0, color);
       } else if (key == "wifi") {
         QString dbm = value(status, "signal_dbm");
         tile->setValue(dbm.isEmpty() ? "--" : dbm + " dBm", color);
@@ -323,6 +346,10 @@ void SystemPage::onDiagnostics(const DiagnosticArray & diagnostics)
       continue;
     }
     // Topic rates and any other node's diagnostics
+    if (standby_ && name.startsWith("f1tenth/topic/") && level == 2) {
+      color = theme::levelColor(3);  // nothing is meant to run in standby: no data isn't a fault
+      message = "standby";
+    }
     QString source = name.startsWith("f1tenth/topic/") ? name.mid(13) : name;
     QString expected = value(status, "expected");
     int row = -1;
