@@ -247,6 +247,16 @@ void CarPicker::autoConnect(const QString & name, int timeout_ms)
   }
 }
 
+bool CarPicker::parseAnnouncement(const QByteArray & data, const QHostAddress & from, CarInfo & car)
+{
+  return parse(data, from, car);
+}
+
+quint16 CarPicker::announcePort()
+{
+  return kAnnouncePort;
+}
+
 void CarPicker::readAnnouncements()
 {
   while (listener_->hasPendingDatagrams()) {

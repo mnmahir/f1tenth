@@ -2,7 +2,9 @@
 // battery on UDP. The UI joins that car's domain only, so it can't see or command any other car.
 #pragma once
 
+
 #include <QDialog>
+#include <QHostAddress>
 #include <QString>
 
 #include <map>
@@ -41,6 +43,10 @@ public:
   CarInfo selected() const {return selected_;}
   // Connects without asking once a car matching name (or host/address) shows up; shows the picker after timeout
   void autoConnect(const QString & name, int timeout_ms);
+
+  // A car's announcement (broadcast on announcePort() every second); false if the data isn't one
+  static bool parseAnnouncement(const QByteArray & data, const QHostAddress & from, CarInfo & car);
+  static quint16 announcePort();
 
   // The last car this computer connected to
   static CarInfo lastCar();

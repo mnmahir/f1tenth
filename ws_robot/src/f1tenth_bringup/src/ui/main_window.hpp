@@ -14,6 +14,7 @@
 class QLabel;
 class QPushButton;
 class QStackedWidget;
+class QUdpSocket;
 class QTimer;
 
 namespace f1ui
@@ -49,9 +50,15 @@ private:
   void screenshot(const QString & path = QString());
   void runTour(const QString & dir);
   void switchCar();
+  void watchCarAddress();
 
   RosBridge * ros_;
   CarInfo car_;
+  // Auto reconnect: the same car announcing itself from another address (e.g. after a Wi-Fi change)
+  QUdpSocket * beacon_ = nullptr;
+  CarInfo moved_;
+  qint64 link_lost_ms_ = 0;
+  bool reconnecting_ = false;
   QStackedWidget * pages_ = nullptr;
   std::vector<NavButton *> nav_;
   HomePage * home_ = nullptr;

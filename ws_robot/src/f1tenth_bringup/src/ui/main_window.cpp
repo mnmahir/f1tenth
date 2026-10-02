@@ -13,6 +13,7 @@
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QMenu>
+#include <QNetworkDatagram>
 #include <QPainter>
 #include <QPlainTextEdit>
 #include <QProcess>
@@ -24,6 +25,7 @@
 #include <QStandardPaths>
 #include <QTextEdit>
 #include <QTimer>
+#include <QUdpSocket>
 #include <QVBoxLayout>
 #include <QWindow>
 
@@ -227,6 +229,7 @@ MainWindow::MainWindow(RosBridge * ros, const std::string & rviz_node_name, cons
   connect(ros_, &RosBridge::supervisorState, this, &MainWindow::onSupervisor);
   connect(ros_, &RosBridge::driveState, this, &MainWindow::onDrive);
   connect(ros_, &RosBridge::linkChanged, this, &MainWindow::onLink);
+  watchCarAddress();
   connect(ros_, &RosBridge::estopChanged, this, &MainWindow::setEstopShown);
   connect(ros_, &RosBridge::rosout, this, [this](const std::vector<Log> & batch) {
       for (const auto & log : batch) {
@@ -342,6 +345,50 @@ void MainWindow::showEvent(QShowEvent * event)
         runTour(tour);
       }
     });
+}
+
+// Zenoh connects to the car's address chosen at start, so when the car moves to another address (another Wi-Fi
+// network, a hotspot) the link is gone for good. Its announcements say where it is now: once the link has been down
+// a few seconds and the same car is heard elsewhere, start again on the new address.
+void MainWindow::watchCarAddress()
+{
+  if (QHostAddress(car_.address).isNull()) {
+    return;  // the UI runs on the car itself
+  }
+  beacon_ = new QUdpSocket(this);
+  beacon_->bind(QHostAddress::AnyIPv4, CarPicker::announcePort(), QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint);
+  connect(beacon_, &QUdpSocket::readyRead, this, [this]() {
+      while (beacon_->hasPendingDatagrams()) {
+        QNetworkDatagram datagram = beacon_->receiveDatagram();
+        CarInfo car;
+        if (CarPicker::parseAnnouncement(datagram.data(), datagram.senderAddress(), car) && car.name == car_.name &&
+          car.domain == car_.domain && car.address != car_.address)
+        {
+          moved_ = car;
+        }
+      }
+    });
+  auto * timer = new QTimer(this);
+  connect(timer, &QTimer::timeout, this, [this]() {
+      qint64 now = QDateTime::currentMSecsSinceEpoch();
+      if (ros_->supervisorLinked()) {
+        link_lost_ms_ = 0;
+        return;
+      }
+      if (link_lost_ms_ == 0) {
+        link_lost_ms_ = now;
+      }
+      if (!reconnecting_ && now - link_lost_ms_ > 4000 && moved_.valid() && now - moved_.seen_ms < 3000) {
+        reconnecting_ = true;
+        notify(Level::Warn, QString("%1 is now at %2: reconnecting...").arg(car_.name.toUpper(), moved_.address));
+        QTimer::singleShot(1500, this, [this]() {
+          QProcess::startDetached(QCoreApplication::applicationFilePath(), {"--car", moved_.address});
+          closing_ = true;
+          close();
+        });
+      }
+    });
+  timer->start(1000);
 }
 
 void MainWindow::switchCar()
