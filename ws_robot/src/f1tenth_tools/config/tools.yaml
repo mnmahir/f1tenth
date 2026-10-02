@@ -1,0 +1,52 @@
+# Parameters for the f1tenth_tools nodes started by f1tenth_bringup's launch files
+camera:
+  ros__parameters:
+    device: /dev/sensors/camera-see3cam     # udev symlink (scripts/usb_rules), falls back to /dev/video0 in the launch file
+    width: 1280
+    height: 720
+    fps: 30
+    max_publish_rate: 30.0                  # Hz; lower it to save Wi-Fi bandwidth for a remote UI
+    frame_id: camera_optical_1_link
+
+telemetry_aggregator:
+  ros__parameters:
+    battery_cells: 3                        # 3S LiPo (VESC si_battery_cells)
+    rate: 30.0
+
+drive_coordinator:
+  ros__parameters:
+    assist_enabled: true                    # with a map and a path: path follower steers, joystick sets the speed
+    follower_timeout: 0.3
+    engage_button: 0                        # A: engage autonomous
+    disengage_button: 1                     # B: disengage autonomous
+
+path_recorder:
+  ros__parameters:
+    spacing: 0.10                           # m between recorded points
+    speed_mode: recorded                    # recorded | constant
+    constant_speed: 2.0
+    min_speed: 0.5
+
+raceline_optimizer:
+  ros__parameters:
+    vehicle_width: 0.30
+    margin: 0.10                            # m kept from the walls on top of half the car width
+    max_speed: 6.0
+    max_lateral_accel: 5.0
+    max_accel: 3.0
+    max_decel: 5.0
+
+lap_timer:
+  ros__parameters:
+    min_lap_time: 3.0
+
+localization_monitor:
+  ros__parameters:
+    tolerance: 0.15         # m: a lidar point this close to a map wall counts as matching
+    match_good: 0.6         # localized from this share of matching points up
+    match_lost: 0.4         # not localized below this (in between keeps the last state)
+    locate_min_fit: 0.5     # "find the car" gives up below this fit
+
+system_monitor:
+  ros__parameters:
+    wifi_interface: wlP1p1s0

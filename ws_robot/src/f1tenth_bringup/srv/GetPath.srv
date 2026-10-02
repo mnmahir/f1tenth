@@ -1,0 +1,6 @@
+string name
+---
+bool success
+string message
+nav_msgs/Path path
+float32[] speeds            # m/s per pose

@@ -1,0 +1,5 @@
+string name                 # component name
+string action               # restart | stop | start
+---
+bool success
+string message

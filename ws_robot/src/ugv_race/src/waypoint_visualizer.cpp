@@ -126,8 +126,8 @@ private:
         double min_speed = *std::min_element(waypoints.V.begin(), waypoints.V.end());
         double max_speed = *std::max_element(waypoints.V.begin(), waypoints.V.end());
 
-        RCLCPP_INFO(this->get_logger(), "Minimum speed: %f m/s", min_speed);
-        RCLCPP_INFO(this->get_logger(), "Maximum speed: %f m/s", max_speed);
+        RCLCPP_INFO_ONCE(this->get_logger(), "Minimum speed: %f m/s", min_speed);
+        RCLCPP_INFO_ONCE(this->get_logger(), "Maximum speed: %f m/s", max_speed);
 
         for (unsigned int i = 0; i < waypoints.X.size(); ++i)
         {

@@ -1,0 +1,13 @@
+string path                 # source path name (e.g. a recorded lap)
+string map                  # map with the track walls
+float32 margin              # m kept from the walls (on top of half the car width)
+float32 max_speed           # m/s
+float32 max_lateral_accel   # m/s^2
+float32 max_accel           # m/s^2
+float32 max_decel           # m/s^2
+---
+bool success
+string message
+float32 length              # m
+float32 lap_time            # s, estimated from the speed profile
+float32 min_width           # m, narrowest track width found

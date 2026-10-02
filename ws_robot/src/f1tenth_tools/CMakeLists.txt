@@ -1,0 +1,53 @@
+cmake_minimum_required(VERSION 3.8)
+project(f1tenth_tools)
+
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+set(CMAKE_CXX_STANDARD 17)
+
+find_package(ament_cmake REQUIRED)
+foreach(PACKAGE rclcpp rcl_interfaces f1tenth_bringup std_msgs std_srvs sensor_msgs nav_msgs geometry_msgs visualization_msgs
+    diagnostic_msgs ackermann_msgs vesc_msgs slam_toolbox tf2 tf2_ros ament_index_cpp)
+  find_package(${PACKAGE} REQUIRED)
+endforeach()
+find_package(yaml-cpp REQUIRED)
+if(TARGET yaml-cpp::yaml-cpp)
+  set(YAML_TARGET yaml-cpp::yaml-cpp)
+else()
+  set(YAML_TARGET yaml-cpp)
+endif()
+
+include_directories(include)
+
+function(add_tool name)
+  add_executable(${name} src/${name}.cpp)
+  ament_target_dependencies(${name} ${ARGN})
+  install(TARGETS ${name} DESTINATION lib/${PROJECT_NAME})
+endfunction()
+
+add_tool(supervisor rclcpp rcl_interfaces f1tenth_bringup nav_msgs std_srvs slam_toolbox ament_index_cpp)
+target_link_libraries(supervisor ${YAML_TARGET})
+add_tool(telemetry_aggregator rclcpp f1tenth_bringup ackermann_msgs vesc_msgs sensor_msgs std_msgs)
+add_tool(drive_coordinator rclcpp f1tenth_bringup ackermann_msgs sensor_msgs std_msgs std_srvs)
+add_tool(path_recorder rclcpp f1tenth_bringup nav_msgs geometry_msgs std_srvs tf2 tf2_ros ament_index_cpp)
+target_link_libraries(path_recorder ${YAML_TARGET})
+add_tool(raceline_optimizer rclcpp f1tenth_bringup nav_msgs visualization_msgs ament_index_cpp)
+target_link_libraries(raceline_optimizer ${YAML_TARGET})
+add_tool(lap_timer rclcpp f1tenth_bringup nav_msgs std_srvs tf2 tf2_ros)
+add_tool(localization_monitor rclcpp f1tenth_bringup nav_msgs sensor_msgs geometry_msgs std_srvs tf2 tf2_ros)
+add_tool(mjpeg_camera rclcpp sensor_msgs)
+add_tool(imu_drift_corrector rclcpp nav_msgs sensor_msgs)
+add_tool(system_monitor rclcpp diagnostic_msgs)
+
+install(DIRECTORY include/ DESTINATION include)
+install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
+
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  set(ament_cmake_copyright_FOUND TRUE)
+  set(ament_cmake_cpplint_FOUND TRUE)
+  ament_lint_auto_find_test_dependencies()
+endif()
+
+ament_package()

@@ -277,7 +277,7 @@ private:
         }
         catch (tf2::TransformException &ex)
         {
-            RCLCPP_INFO(this->get_logger(), "Could not transform. Error: %s", ex.what());
+            RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 2000, "Could not transform. Error: %s", ex.what());
         }
 
         // transform points (rotate first and then translate)
@@ -338,7 +338,7 @@ private:
         curr_velocity = get_velocity(drive_msgObj.drive.steering_angle);
         drive_msgObj.drive.speed = curr_velocity;
 
-        RCLCPP_INFO(this->get_logger(), "Idx: %d | Distance: %.2fm | Speed: %.2fm/s | Steering angle: %.2f", waypoints.index, p2pdist(waypoints.X[waypoints.index], base_pose_x, waypoints.Y[waypoints.index], base_pose_y), drive_msgObj.drive.speed, to_degrees(drive_msgObj.drive.steering_angle));
+        RCLCPP_DEBUG(this->get_logger(), "Idx: %d | Distance: %.2fm | Speed: %.2fm/s | Steering angle: %.2f", waypoints.index, p2pdist(waypoints.X[waypoints.index], base_pose_x, waypoints.Y[waypoints.index], base_pose_y), drive_msgObj.drive.speed, to_degrees(drive_msgObj.drive.steering_angle));
 
         drive_pub_->publish(drive_msgObj);
     }
@@ -374,7 +374,7 @@ private:
         }
         catch (tf2::TransformException &ex)
         {
-            RCLCPP_INFO(this->get_logger(), "Could not transform. Error: %s", ex.what());
+            RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 2000, "Could not transform. Error: %s", ex.what());
         }
 
         base_pose_x = transformStamped.transform.translation.x;

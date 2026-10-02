@@ -1,0 +1,8 @@
+string name
+uint32 max_size             # longest side of the returned image, px
+---
+bool success
+string message
+sensor_msgs/Image image     # mono8, 0 = occupied, 255 = free, 127 = unknown
+float32 resolution          # m per pixel of the returned image
+geometry_msgs/Pose origin   # pose of the lower-left pixel

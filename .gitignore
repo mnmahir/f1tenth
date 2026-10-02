@@ -51,3 +51,5 @@ qtcreator-*
 CATKIN_IGNORE
 
 .vscode
+# Car data written at runtime (maps, paths, saved parameters, bags), not source
+/data/

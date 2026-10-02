@@ -31,3 +31,7 @@ ackermann_mux:
         topic   : mux_bool/teleop_cutoff_and_brake # Default is True. When True, teleop will be disabled and brake will be enabled.
         timeout : 0.0   # 0.0 for no timeout and will be locked until the topic is true
         priority: 200   # Same or higher priority will not be locked
+      ui_estop:
+        topic   : mux_bool/ui_estop  # E-stop from the f1tenth UI. Stays engaged until a UI releases it (the joystick can't).
+        timeout : 0.0
+        priority: 255

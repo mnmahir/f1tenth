@@ -25,6 +25,7 @@ public:
         this->declare_parameter("force_stop_rectangular_region", std::vector<double>{0.0, 0.16, -0.14, 0.14});
         this->declare_parameter("force_stop_min_ray", 5);
         this->declare_parameter("enable_recovery", false);
+        this->declare_parameter("enabled", true);   // false: never brake (switchable from the UI)
         this->declare_parameter("recovery_timeout", 3000);
         this->declare_parameter("recovery_backup_speed", -1.0);
         this->declare_parameter("recovery_backup_duration", 1000);  
@@ -60,6 +61,7 @@ public:
         ittc_foward_drive_x_scan_offset_ = this->get_parameter("ittc_foward_drive_x_scan_offset").as_double();
         ittc_brake_release_delay_ = this->get_parameter("ittc_brake_release_delay").as_int();
         enable_recovery_ = this->get_parameter("enable_recovery").as_bool();
+        enabled_ = this->get_parameter("enabled").as_bool();
         recovery_timeout_ = this->get_parameter("recovery_timeout").as_int();
         recovery_backup_speed_ = this->get_parameter("recovery_backup_speed").as_double();
         recovery_backup_duration_ = this->get_parameter("recovery_backup_duration").as_int();
@@ -146,6 +148,12 @@ private:
 
     void scan_callback(const sensor_msgs::msg::LaserScan::SharedPtr scan_msg) {
         scan_frame_id_ = scan_msg->header.frame_id;
+        if (!enabled_) {
+            if (toggle_emergency_brake_) {
+                release_emergency_brake();
+            }
+            return;
+        }
 
         std::vector<double> ray_range(scan_msg->ranges.begin(), scan_msg->ranges.end());
         std::vector<double> ray_angle(ray_range.size());
@@ -256,6 +264,7 @@ private:
         ittc_foward_drive_x_scan_offset_ = this->get_parameter("ittc_foward_drive_x_scan_offset").as_double();
         ittc_brake_release_delay_ = this->get_parameter("ittc_brake_release_delay").as_int();
         enable_recovery_ = this->get_parameter("enable_recovery").as_bool();
+        enabled_ = this->get_parameter("enabled").as_bool();
         recovery_timeout_ = this->get_parameter("recovery_timeout").as_int();
         recovery_backup_speed_ = this->get_parameter("recovery_backup_speed").as_double();
         recovery_backup_duration_ = this->get_parameter("recovery_backup_duration").as_int();
@@ -285,6 +294,7 @@ private:
     double recovery_backup_speed_;
     int recovery_backup_duration_;
     bool bypass_teleop_state_;
+    bool enabled_;
     double speed_;
     double steering_angle_;
     bool toggle_emergency_brake_;

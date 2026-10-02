@@ -27,6 +27,7 @@ private:
 
     // variables
     double max_steering_angle_;
+    bool enabled_;
 
     // gap finding parameters
     double bubble_radius_;
@@ -489,6 +490,10 @@ private:
     {
         auto modified_drive_msg = ackermann_msgs::msg::AckermannDriveStamped();
         modified_drive_msg = *drive_msg;
+        if (!enabled_) {
+            drive_pub_->publish(modified_drive_msg);
+            return;
+        }
 
         // Get the original steering angle
         original_steering_angle_ = drive_msg->drive.steering_angle;
@@ -510,6 +515,7 @@ private:
 
     void dyn_conf_timer_callback()
     {
+        enabled_ = this->get_parameter("enabled").as_bool();
         max_steering_angle_ = this->get_parameter("max_steering_angle").as_double() * M_PI / 180.0;
         side_wall_width_ = this->get_parameter("side_wall_width").as_double();
         side_wall_length_ = this->get_parameter("side_wall_length").as_double();
@@ -526,6 +532,7 @@ public:
         this->declare_parameter("scan_topic", "/scan");
         this->declare_parameter("drive_topic_sub", "/ackermann_cmd");
         this->declare_parameter("drive_topic_pub", "/ackermann_cmd_filtered");
+        this->declare_parameter("enabled", true);                             // false: pass commands through unchanged (switchable from the UI)
         this->declare_parameter("max_steering_angle", 22.9);                  // maximum steering angle (degrees)
         this->declare_parameter("bubble_radius", 0.281);                      // radius of the safety bubble around the closest obstacle
         this->declare_parameter("scan_rejection_distance", 3.0);              // reject far points (meters)
@@ -555,6 +562,7 @@ public:
         original_steering_angle_ = 0.0;
         side_avoidance_offset_steering_angle_ = 0.0;
         front_avoidance_offset_steering_angle_ = 0.0;
+        enabled_ = this->get_parameter("enabled").as_bool();
         max_steering_angle_ = this->get_parameter("max_steering_angle").as_double() * M_PI / 180.0;
         bubble_radius_ = this->get_parameter("bubble_radius").as_double();
         lidar_ray_fov_ = this->get_parameter("lidar_ray_fov").as_double() * M_PI / 180.0;

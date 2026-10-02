@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <rect width="128" height="128" rx="26" fill="#15151e"/>
+  <polygon points="20,38 30,38 18,90 8,90" fill="#6e0300"/>
+  <polygon points="34,38 44,38 32,90 22,90" fill="#a30400"/>
+  <polygon points="52,30 124,30 108,98 36,98" fill="#e10600"/>
+  <text x="80" y="80" text-anchor="middle" font-family="Titillium Web, Arial, sans-serif" font-size="46"
+        font-weight="900" font-style="italic" fill="#ffffff">F1</text>
+</svg>

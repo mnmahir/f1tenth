@@ -1,0 +1,13 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+  <!-- Bundled fonts: Titillium Web and IBM Plex Mono (SIL OFL 1.1), Material Icons (Apache 2.0). Licenses in fonts/. -->
+  <qresource prefix="/fonts">
+    <file alias="TitilliumWeb-Regular.ttf">fonts/TitilliumWeb-Regular.ttf</file>
+    <file alias="TitilliumWeb-SemiBold.ttf">fonts/TitilliumWeb-SemiBold.ttf</file>
+    <file alias="TitilliumWeb-Bold.ttf">fonts/TitilliumWeb-Bold.ttf</file>
+    <file alias="TitilliumWeb-Black.ttf">fonts/TitilliumWeb-Black.ttf</file>
+    <file alias="IBMPlexMono-Regular.ttf">fonts/IBMPlexMono-Regular.ttf</file>
+    <file alias="IBMPlexMono-SemiBold.ttf">fonts/IBMPlexMono-SemiBold.ttf</file>
+    <file alias="MaterialIcons-Regular.ttf">fonts/MaterialIcons-Regular.ttf</file>
+  </qresource>
+</RCC>

@@ -1,0 +1,6 @@
+string mode                 # idle | manual | mapping | path
+string map                  # '' for none
+string path                 # '' for none
+---
+bool success
+string message

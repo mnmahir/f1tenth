@@ -1,0 +1,4 @@
+# Latest output lines of the supervised components (what they print to the terminal)
+uint32 max_lines            # 0 for all that are kept
+---
+rcl_interfaces/Log[] lines
