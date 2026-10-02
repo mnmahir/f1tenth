@@ -1,0 +1,27 @@
+Trampa VESC 6 by Tim Bouwens
+https://grabcad.com/library/trampa-vesc-6-1
+vesc6.STL
+
+
+Hokuyo UST-10LX
+https://www.hokuyo-aut.jp/search/single.php?serial=167#download
+hokuyo_ust_10lx_20lx.STL (modified from original source)
+
+
+Logitech C920 Webcam by Ahmet TASKIRAN
+https://grabcad.com/library/logitech-c920-webcam-1
+logitech_c920_webcam.STL (modified from original source)
+
+
+Jetson Orin Nano Developer Kit 3D CAD STEP model (modified from original source)
+Desc: 20230320 | 2023/03/21 | 3D CAD STEP model of Jetson Orin Nano Developer Kit (P3766 = P3767 module [envelop] + P3768 carrier board.)
+https://developer.nvidia.com/embedded/downloads
+jetson_orin_nano_dev_kit.STL (modified from original source)
+
+
+F1Tenth Platform deck V3 by Kim Luong
+https://f1tenth.org/build.html | https://drive.google.com/drive/folders/1NU4FZzvMEGKCOFzDBvnjyePnnSMvsZPG?usp=sharing
+platform_deck.STL (modified from original source)
+
+
+Not listed here are designed by Mahir Sehmi.
