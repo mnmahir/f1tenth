@@ -369,7 +369,7 @@ private:
       geometry_msgs::msg::Point pt;
       pt.x = raceline_[k].x;
       pt.y = raceline_[k].y;
-      pt.z = 0.02;
+      pt.z = 0.06;  // above the UI's driving trail
       line.points.push_back(pt);
       double f = vmax > vmin ? (speeds_[k] - vmin) / (vmax - vmin) : 0.5;
       std_msgs::msg::ColorRGBA c;
@@ -394,7 +394,7 @@ private:
         geometry_msgs::msg::Point pt;
         pt.x = ref[k].x + normals[k].x * d;
         pt.y = ref[k].y + normals[k].y * d;
-        pt.z = 0.01;
+        pt.z = 0.05;
         wall.points.push_back(pt);
       }
       markers.markers.push_back(wall);

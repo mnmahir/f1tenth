@@ -192,15 +192,18 @@ void SceneView::createDisplays()
     {"Description Source", "Topic"}, {"Description Topic/Durability Policy", kTransientLocal},
     {"Description Topic", "/robot_description"}});
 
+  // Paths are lifted above the driving trail (drawn 2 cm above the floor), which otherwise hides them wherever the
+  // car has driven: exactly where a recorded lap or a raceline is
   addDisplay(Layer::Path, "rviz_default_plugins/Path", "Selected path", {
     {"Topic/Durability Policy", kTransientLocal}, {"Topic", "/f1tenth/selected_path"},
-    {"Line Style", "Billboards"}, {"Line Width", 0.04}, {"Color", color(theme::purple)}, {"Alpha", 0.9}});
+    {"Line Style", "Billboards"}, {"Line Width", 0.04}, {"Color", color(theme::purple)}, {"Alpha", 0.9},
+    {"Offset/Z", 0.04}});
   addDisplay(Layer::Follower, "rviz_default_plugins/Marker", "Lookahead", {{"Topic", "/lookahead_waypoint"}});
   addDisplay(Layer::Follower, "rviz_default_plugins/Marker", "Current waypoint", {{"Topic", "/current_waypoint"}});
 
   addDisplay(Layer::Recording, "rviz_default_plugins/Path", "Recording", {
     {"Topic/Durability Policy", kTransientLocal}, {"Topic", "/f1tenth/recorded_path"},
-    {"Line Style", "Billboards"}, {"Line Width", 0.05}, {"Color", color(theme::green)}});
+    {"Line Style", "Billboards"}, {"Line Width", 0.05}, {"Color", color(theme::green)}, {"Offset/Z", 0.05}});
   addDisplay(Layer::Raceline, "rviz_default_plugins/MarkerArray", "Raceline", {
     {"Topic/Durability Policy", kTransientLocal}, {"Topic", "/f1tenth/raceline/markers"}});
 
