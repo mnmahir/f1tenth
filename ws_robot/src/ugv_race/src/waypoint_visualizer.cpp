@@ -5,6 +5,7 @@ Modified version of the waypoint_visualizer.cpp file from https://github.com/CL2
 
 #include <chrono>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <functional>
 #include <geometry_msgs/msg/transform_stamped.hpp>
@@ -16,6 +17,7 @@ Modified version of the waypoint_visualizer.cpp file from https://github.com/CL2
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
+#include "ament_index_cpp/get_package_share_directory.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "visualization_msgs/msg/marker.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
@@ -36,6 +38,10 @@ public:
         this->declare_parameter("reverse_waypoints_order", false);
 
         waypoints_path = this->get_parameter("waypoints_path").as_string();
+        // Relative paths are relative to this package's share directory, e.g. "racelines/f1tenth_route.csv"
+        if (std::filesystem::path(waypoints_path).is_relative()) {
+            waypoints_path = ament_index_cpp::get_package_share_directory("ugv_race") + "/" + waypoints_path;
+        }
         rviz_waypoints_line_topic = this->get_parameter("rviz_waypoints_line_topic").as_string();
         rviz_waypoints_arrow_topic = this->get_parameter("rviz_waypoints_arrow_topic").as_string();
         waypoint_line_width = this->get_parameter("waypoint_line_width").as_double();

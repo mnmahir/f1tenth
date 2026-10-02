@@ -7,6 +7,3 @@
 [submodule "misc/VESC/vesc-firmware"]
 	path = misc/VESC/vesc-firmware
 	url = https://github.com/f1tenth/vesc-firmware.git
-[submodule "ws_lab"]
-	path = ws_lab
-	url = https://github.com/mnmahir/f1tenth_lab.git

@@ -9,6 +9,7 @@ endif()
 foreach(PACKAGE 
   ament_cmake 
   ament_cmake_python
+  ament_index_cpp
   rclcpp
   rclpy 
   geometry_msgs
@@ -33,10 +34,10 @@ include_directories(
 )
 # Create CPP executable
 add_executable(pure_pursuit src/pure_pursuit.cpp)
-ament_target_dependencies(pure_pursuit geometry_msgs ackermann_msgs nav_msgs sensor_msgs std_msgs visualization_msgs tf2_ros tf2_geometry_msgs)
+ament_target_dependencies(pure_pursuit rclcpp ament_index_cpp geometry_msgs ackermann_msgs nav_msgs sensor_msgs std_msgs visualization_msgs tf2_ros tf2_geometry_msgs)
 
 add_executable(waypoint_visualizer src/waypoint_visualizer.cpp)
-ament_target_dependencies(waypoint_visualizer rclcpp geometry_msgs visualization_msgs tf2_ros tf2_geometry_msgs) 
+ament_target_dependencies(waypoint_visualizer rclcpp ament_index_cpp geometry_msgs visualization_msgs tf2_ros tf2_geometry_msgs) 
 
 add_executable(reactive_node src/reactive_node.cpp)
 ament_target_dependencies(reactive_node rclcpp geometry_msgs ackermann_msgs nav_msgs sensor_msgs std_msgs)

@@ -1,6 +1,6 @@
 /**:
   ros__parameters:
-    waypoints_path: "/media/mnmahir/WS_L/ros_h/f1tenth/ws_robot/src/ugv_race/racelines/f1tenth_route.csv"
+    waypoints_path: "racelines/f1tenth_route.csv"   # relative to the ugv_race share directory
     
     base_frame: "base_footprint"
     map_frame: "map"

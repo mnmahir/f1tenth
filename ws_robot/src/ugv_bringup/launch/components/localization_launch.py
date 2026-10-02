@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, GroupAction, SetEnvironmentVariable
+from launch.actions import DeclareLaunchArgument, GroupAction, LogInfo, OpaqueFunction, SetEnvironmentVariable
 from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import LoadComposableNodes
@@ -138,6 +138,14 @@ def generate_launch_description():
         ],
     )
 
+    # map_server and amcl need a map; without one, say how to make it instead of failing the lifecycle bringup
+    def map_localization(context):
+        map_file = map_yaml_file.perform(context)
+        if not os.path.isfile(map_file):
+            return [LogInfo(msg=f'No map at {map_file}: map_server and amcl not started. '
+                                 'Make one with mapping_launch.py and save it there, or pass map:=<path to map.yaml>.')]
+        return [load_nodes, load_composable_nodes]
+
     # Create the launch description and populate
     ld = LaunchDescription()
 
@@ -159,7 +167,6 @@ def generate_launch_description():
 
     # Add the actions to launch all of the localiztion nodes
     ld.add_action(ekf_node)
-    ld.add_action(load_nodes)
-    ld.add_action(load_composable_nodes)
+    ld.add_action(OpaqueFunction(function=map_localization))
 
     return ld

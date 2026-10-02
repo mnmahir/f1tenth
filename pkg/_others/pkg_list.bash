@@ -1,13 +1,17 @@
 #!/bin/bash
 LIST_GIT_REPO=(     # List of git repositories to be cloned ("Git URL" "Commit ID/Tag/Branch"). Preferably use commit id / tag for reproducibility.
-    "https://github.com/ros-navigation/navigation2.git f79de33c3c192cd66377dc9538bdcbc3597b7f66"    # humble branch
-    "https://github.com/SteveMacenski/slam_toolbox.git 19a66904c648a174220be1a1b98e81a9ef0e6758"    # humble branch
-    "https://github.com/cra-ros-pkg/robot_localization.git 663436c73675d72f8a6c6217e2e9ec7a605bb558"    #humble-devel branch
+    # Installed from apt below instead (official Jazzy releases of these repos). To patch one, uncomment it to build from source.
+    # "https://github.com/ros-navigation/navigation2.git 645abd95f2be02a13ca539b29c2ddc065db34f89"    # jazzy branch
+    # "https://github.com/SteveMacenski/slam_toolbox.git 02afdde003313a10b8d21461a92d9e5f4f0bc5f2"    # jazzy branch
+    # "https://github.com/cra-ros-pkg/robot_localization.git 3efa714fb9c1ff40966327b7bed7053b2570be4d"    # jazzy-devel branch
 )
 
 
 LIST_APT_PKG=(  # List of apt packages to be installed ("Package Name" "--optional-flag")
-    "ros-$ROS_DISTRO-rmw-cyclonedds-cpp"
+    "ros-$ROS_DISTRO-navigation2"
+    "ros-$ROS_DISTRO-slam-toolbox"
+    "ros-$ROS_DISTRO-robot-localization"
+    "ros-$ROS_DISTRO-rmw-zenoh-cpp"
 )
 
 
@@ -16,5 +20,4 @@ LIST_PYTHON_PKG=(   # List of python packages to be installed ("Package Name" "-
 
 
 LIST_EXEC_CMD=(     # List of commands to be executed ("Command")
-    "rm -rf $WS_PROJECT_REPO/pkg/_others/src/navigation2/nav2_system_tests"
 )

@@ -9,7 +9,9 @@ Modified version of the pure_pursuit.cpp file from https://github.com/CL2-UWater
 #include <vector>
 #include <Eigen/Eigen>
 #include <chrono>
+#include <filesystem>
 
+#include "ament_index_cpp/get_package_share_directory.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/laser_scan.hpp"
 #include "nav_msgs/msg/odometry.hpp"
@@ -52,6 +54,10 @@ public:
         this->declare_parameter("rviz_current_waypoint_topic", "/current_waypoint");
         this->declare_parameter("rviz_lookahead_waypoint_topic", "/lookahead_waypoint");
         waypoints_path = this->get_parameter("waypoints_path").as_string();
+        // Relative paths are relative to this package's share directory, e.g. "racelines/f1tenth_route.csv"
+        if (std::filesystem::path(waypoints_path).is_relative()) {
+            waypoints_path = ament_index_cpp::get_package_share_directory("ugv_race") + "/" + waypoints_path;
+        }
         rviz_current_waypoint_topic = this->get_parameter("rviz_current_waypoint_topic").as_string();
         rviz_lookahead_waypoint_topic = this->get_parameter("rviz_lookahead_waypoint_topic").as_string();
 
@@ -94,7 +100,7 @@ public:
         load_waypoints();
 
         RCLCPP_INFO(this->get_logger(), "Pure pursuit node started");
-        RCLCPP_INFO(this->get_logger(), "Using waypoint: %s",waypoints_path);
+        RCLCPP_INFO(this->get_logger(), "Using waypoint: %s", waypoints_path.c_str());
     }
 
     // void pose_callback(const geometry_msgs::msg::PoseStamped::ConstPtr &pose_msg)
@@ -117,7 +123,7 @@ private:
 
         if (!csvFile_waypoints.is_open())
         {
-            RCLCPP_ERROR(this->get_logger(), "Cannot Open CSV File: %s", waypoints_path);
+            RCLCPP_ERROR(this->get_logger(), "Cannot Open CSV File: %s", waypoints_path.c_str());
             return;
         }
         else
@@ -157,7 +163,7 @@ private:
 
         csvFile_waypoints.close();
         num_waypoints = waypoints.X.size();
-        RCLCPP_INFO(this->get_logger(), "Finished loading %d waypoints from %s", num_waypoints, waypoints_path);
+        RCLCPP_INFO(this->get_logger(), "Finished loading %d waypoints from %s", num_waypoints, waypoints_path.c_str());
 
         // reverse the order of waypoints
         if (reverse_waypoints_order)
