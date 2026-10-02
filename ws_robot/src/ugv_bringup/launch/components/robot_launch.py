@@ -32,6 +32,14 @@ def generate_launch_description():
         parameters=[LaunchConfiguration('joy_config')]
     )
 
+    # LT scales joystick teleop speed (cmd_teleop/joy_raw -> cmd_teleop/joy)
+    teleop_speed_multiplier_node = Node(
+        package='ugv_util',
+        executable='teleop_speed_multiplier',
+        name='teleop_speed_multiplier',
+        parameters=[LaunchConfiguration('joy_config')]
+    )
+
     ackermann_to_vesc_node = Node(
         package='vesc_ackermann',
         executable='ackermann_to_vesc_node',
@@ -76,10 +84,13 @@ def generate_launch_description():
         parameters=[{'robot_description': xacro.process_file(urdf_path).toxml(),}]
     )
 
+    # Steering and wheel joints from the VESC servo command and wheel odometry (the model steers in RViz)
     joint_state_publisher_node = Node(
-        package='joint_state_publisher',
-        executable='joint_state_publisher',
+        package='ugv_util',
+        executable='vehicle_joint_state_publisher',
+        name='vehicle_joint_state_publisher',
         output='screen',
+        parameters=[LaunchConfiguration('vesc_config')],
     )
 
 
@@ -92,6 +103,7 @@ def generate_launch_description():
 
             joy_node,
             joy_teleop_node,
+            teleop_speed_multiplier_node,
             ackermann_to_vesc_node,
             vesc_to_odom_node,
             vesc_driver_node,

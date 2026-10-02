@@ -12,28 +12,28 @@
          <visual>
             <origin xyz="0 ${-0.145/2} -0.005" rpy="0 0 0"/>
              <geometry>
-                <mesh filename="file://$(find ugv_description)/models/platform_deck.STL"/>
+                <mesh filename="package://ugv_description/models/platform_deck.STL"/>
             </geometry>
             <material name="white"/>
         </visual>
         <visual>
             <origin xyz="0.10835 0.0485 0" rpy="${pi/2} 0 0"/>
              <geometry>
-                <mesh filename="file://$(find ugv_description)/models/platform_for_jetson_orin_nano_nx_dev_kit.STL"/>
+                <mesh filename="package://ugv_description/models/platform_for_jetson_orin_nano_nx_dev_kit.STL"/>
             </geometry>
             <material name="white"/>
         </visual>
         <visual>
             <origin xyz="0.112825 -0.036925 0.005" rpy="0 0 0"/>
              <geometry>
-                <mesh filename="file://$(find ugv_description)/models/jetson_orin_nano_dev_kit.STL"/>
+                <mesh filename="package://ugv_description/models/jetson_orin_nano_dev_kit.STL"/>
             </geometry>
             <material name="white"/>
         </visual>
         <visual>
             <origin xyz="-0.095 ${0.153/2} -0.02" rpy="${pi/2} 0 0"/>
              <geometry>
-                <mesh filename="file://$(find ugv_description)/models/rear_spoiler.STL"/>
+                <mesh filename="package://ugv_description/models/rear_spoiler.STL"/>
             </geometry>
             <material name="white"/>
         </visual>
@@ -60,14 +60,14 @@
         <visual>
             <origin xyz="${-0.025-0.008843159} ${-(0.04945/2)-0.000825} ${-ust_10lx_perception_height - 0.01}" rpy="${pi/2} 0 ${pi/2}"/>
             <geometry>
-                <mesh filename="file://$(find ugv_description)/models/hokuyo_ust_10lx_20lx.STL"/>
+                <mesh filename="package://ugv_description/models/hokuyo_ust_10lx_20lx.STL"/>
             </geometry>
             <material name="orange"/>
         </visual>
         <visual>
             <origin xyz="${-0.056/2} ${0.056/2} ${-ust_10lx_perception_height-0.01}" rpy="${pi/2} 0 0"/>
             <geometry>
-                <mesh filename="file://$(find ugv_description)/models/platform_for_ust_10lx.STL"/>
+                <mesh filename="package://ugv_description/models/platform_for_ust_10lx.STL"/>
             </geometry>
             <material name="orange"/>
         </visual>
@@ -93,7 +93,7 @@
         <visual>
             <origin xyz="${0.07/2} ${-0.015 - 0.075/2} 0" rpy="0 0 ${pi/2}"/>
             <geometry>
-                <mesh filename="file://$(find ugv_description)/models/vesc6.STL"/>
+                <mesh filename="package://ugv_description/models/vesc6.STL"/>
             </geometry>
             <material name="orange"/>
         </visual>
@@ -119,7 +119,7 @@
         <visual>
             <origin xyz="0.1 0.047 -0.02898" rpy="${pi/2} 0 ${-pi/2}"/>
             <geometry>
-                <mesh filename="file://$(find ugv_description)/models/logitech_c920_webcam.STL"/>
+                <mesh filename="package://ugv_description/models/logitech_c920_webcam.STL"/>
             </geometry>
             <material name="orange"/>
         </visual>

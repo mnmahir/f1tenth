@@ -138,13 +138,13 @@ def generate_launch_description():
         ],
     )
 
-    # map_server and amcl need a map; without one, say how to make it instead of failing the lifecycle bringup
+    # map_server, amcl and the map-frame odometry need a map; without one, say how to make it instead of failing the lifecycle bringup
     def map_localization(context):
         map_file = map_yaml_file.perform(context)
         if not os.path.isfile(map_file):
-            return [LogInfo(msg=f'No map at {map_file}: map_server and amcl not started. '
+            return [LogInfo(msg=f'No map at {map_file}: map_server, amcl and /odom/map not started. '
                                  'Make one with mapping_launch.py and save it there, or pass map:=<path to map.yaml>.')]
-        return [load_nodes, load_composable_nodes]
+        return [base_footprint_to_map_odom_node, load_nodes, load_composable_nodes]
 
     # Create the launch description and populate
     ld = LaunchDescription()
@@ -163,7 +163,6 @@ def generate_launch_description():
     ld.add_action(declare_use_respawn_cmd)
     ld.add_action(declare_log_level_cmd)
     ld.add_action(declare_ekf_params_file_cmd)
-    ld.add_action(base_footprint_to_map_odom_node)
 
     # Add the actions to launch all of the localiztion nodes
     ld.add_action(ekf_node)

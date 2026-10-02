@@ -49,6 +49,12 @@ ament_target_dependencies(safety_brake rclcpp sensor_msgs nav_msgs std_msgs acke
 add_executable(utility_visualizer src/utility_visualizer.cpp)
 ament_target_dependencies(utility_visualizer rclcpp ackermann_msgs visualization_msgs geometry_msgs)
 
+add_executable(vehicle_joint_state_publisher src/vehicle_joint_state_publisher.cpp)
+ament_target_dependencies(vehicle_joint_state_publisher rclcpp std_msgs nav_msgs sensor_msgs)
+
+add_executable(teleop_speed_multiplier src/teleop_speed_multiplier.cpp)
+ament_target_dependencies(teleop_speed_multiplier rclcpp sensor_msgs ackermann_msgs)
+
 # Install CPP executables
 install(TARGETS
   cutoff_and_brake_control
@@ -57,6 +63,8 @@ install(TARGETS
   transform_to_odom
   safety_brake
   utility_visualizer
+  vehicle_joint_state_publisher
+  teleop_speed_multiplier
   DESTINATION lib/${PROJECT_NAME})
 
 

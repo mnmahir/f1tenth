@@ -25,7 +25,7 @@ joy_teleop:
     joy_control:
       type: topic
       interface_type: ackermann_msgs/msg/AckermannDriveStamped
-      topic_name: cmd_teleop/joy
+      topic_name: cmd_teleop/joy_raw    # teleop_speed_multiplier scales the speed with LT and publishes cmd_teleop/joy
       deadman_buttons: [6]
       axis_mappings:
         drive-speed:
@@ -106,3 +106,9 @@ joy_teleop:
     #   message_value:
     #     data:
     #       value: 0
+
+teleop_speed_multiplier:
+  ros__parameters:
+    joy_topic: /joy
+    multiplier_axis: 5      # LT (Xbox One S over Bluetooth): 1.0 released, -1.0 fully pressed
+    max_multiplier: 5.0     # joy_control speed scale with LT fully pressed (1.0 m/s at full stick -> 5.0 m/s)

@@ -43,7 +43,7 @@ for RULE in "$CURRENT_SCRIPT_PATH"/usb_rules/*.rules; do
 done
 if [ $RULES_CHANGED -eq 1 ]; then
     sudo udevadm control --reload-rules
-    sudo udevadm trigger --subsystem-match=tty --subsystem-match=input
+    sudo udevadm trigger --subsystem-match=tty --subsystem-match=input --subsystem-match=video4linux
     sudo udevadm settle
 fi
 
@@ -122,6 +122,9 @@ check_device "99-imu-hiwonder-usb.rules" "HiWonder IMU"
 
 # LDS01 Lidar USB interface
 check_device "99-lidar-robotis-lds01-usb.rules" "LDS01 LiDAR"
+
+# e-con See3CAM_24CUG camera (MJPEG over USB)
+check_device "99-camera-see3cam-usb.rules" "See3CAM camera"
 
 # Hokuyo UST-10LX LiDAR Ethernet interface
 setup_ethernet_lidar "Hokuyo UST-10LX LiDAR"

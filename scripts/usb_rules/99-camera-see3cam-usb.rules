@@ -1,0 +1,1 @@
+SUBSYSTEM=="video4linux", ATTRS{idVendor}=="2560", ATTRS{idProduct}=="c128", ATTR{index}=="0", MODE="0666", SYMLINK+="sensors/camera-see3cam"

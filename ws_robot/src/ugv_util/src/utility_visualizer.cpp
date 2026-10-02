@@ -4,7 +4,9 @@
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/polygon_stamped.hpp>
 
+#include <algorithm>
 #include <chrono>
+#include <cmath>
 
 class UtilityVisualizer : public rclcpp::Node
 {
@@ -79,8 +81,8 @@ private:
     double fstop_rect_y_min_;
     double fstop_rect_y_max_;
 
-    double state_speed_;
-    double state_steering_angle_;
+    double state_speed_ = 0.0;           // until the first command arrives
+    double state_steering_angle_ = 0.0;
     
 
     void publish_trajectory()
@@ -104,7 +106,7 @@ private:
         double x = 0.0, y = 0.0, theta = 0.0;
         double time_interval = 0.1;                         // Time interval between points
         double total_distance = std::abs(state_speed_); // Total distance to be covered
-        int num_points = static_cast<int>(total_distance / time_interval);
+        int num_points = std::isfinite(total_distance) ? std::min(static_cast<int>(total_distance / time_interval), 200) : 0;
 
         for (int i = 0; i < num_points; ++i)
         {

@@ -14,10 +14,10 @@
     duty_cycle_max: 0.0
     current_min: -60.0
     current_max: 60.0
-    brake_min: -200000.0
-    brake_max: 200000.0
-    speed_min: -50000.0
-    speed_max: 50000.0
+    brake_min: -60.0       # VESC l_current_min (misc/VESC/vesc_mcconf.xml)
+    brake_max: 60.0
+    speed_min: -90000.0    # VESC l_min_erpm / l_max_erpm
+    speed_max: 90000.0
     position_min: 0.0
     position_max: 0.0
     servo_min: 0.10
