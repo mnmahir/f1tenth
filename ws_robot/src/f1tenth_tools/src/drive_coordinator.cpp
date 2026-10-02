@@ -2,8 +2,9 @@
 //  - joystick commands pass through, with the path follower's steering when assist is on (user keeps the speed)
 //  - path follower commands go to cmd_auto/drive only while autonomous is engaged
 // Autonomous is engaged from the UI (~/set_autonomous) or the joystick, only while the car is localized on the
-// map, and drops when the follower goes stale, localization is lost, or the kill switch (teleop lock) or the UI
-// E-stop is engaged, so releasing a lock never resumes driving by itself.
+// map, and drops when the follower goes stale, localization is lost, the joystick disappears (no kill switch
+// any more), or the kill switch (teleop lock) or the UI E-stop is engaged, so releasing a lock never resumes
+// driving by itself.
 #include <chrono>
 #include <string>
 
@@ -29,6 +30,8 @@ public:
     disengage_button_ = declare_parameter<int>("disengage_button", 1);  // B
     require_localization_ = declare_parameter<bool>("require_localization", true);
     localization_timeout_ = declare_parameter<double>("localization_timeout", 1.5);  // s lost before disengaging
+    // joy_node repeats the last state at 20 Hz while the controller is connected and stops when it disconnects
+    joystick_timeout_ = declare_parameter<double>("joystick_timeout", 0.5);
 
     teleop_pub_ = create_publisher<AckermannStamped>("cmd_teleop/joy", 10);
     auto_pub_ = create_publisher<AckermannStamped>("cmd_auto/drive", 10);
@@ -82,13 +85,14 @@ public:
         if (p.get_name() == "disengage_button") {disengage_button_ = static_cast<int>(p.as_int());}
         if (p.get_name() == "require_localization") {require_localization_ = p.as_bool();}
         if (p.get_name() == "localization_timeout") {localization_timeout_ = p.as_double();}
+        if (p.get_name() == "joystick_timeout") {joystick_timeout_ = p.as_double();}
       }
       rcl_interfaces::msg::SetParametersResult result;
       result.successful = true;
       return result;
     });
 
-    follower_time_ = teleop_time_ = localization_time_ = localized_time_ = message_time_ =
+    follower_time_ = teleop_time_ = localization_time_ = localized_time_ = message_time_ = joy_time_ =
       rclcpp::Time(0, 0, get_clock()->get_clock_type());
     timer_ = create_wall_timer(std::chrono::milliseconds(100), [this]() {publish_state();});
   }
@@ -152,6 +156,8 @@ private:
 
   void on_joy(const sensor_msgs::msg::Joy & joy)
   {
+    joy_time_ = now();
+    joy_seen_ = true;
     auto pressed = [&joy](int button) {
       return button >= 0 && button < static_cast<int>(joy.buttons.size()) && joy.buttons[button] != 0;
     };
@@ -173,6 +179,10 @@ private:
     }
     if (autonomous_ && localization_lost()) {
       set_autonomous(false, "localization lost");
+    }
+    // A joystick that was there and is gone: its kill switch and B no longer work
+    if (autonomous_ && joy_seen_ && (now() - joy_time_).seconds() > joystick_timeout_) {
+      set_autonomous(false, "joystick lost");
     }
     DriveState state;
     state.header.stamp = now();
@@ -199,7 +209,9 @@ private:
   double localization_timeout_;
   rclcpp::Time localization_time_, localized_time_, message_time_;
   rclcpp::Subscription<f1tenth_bringup::msg::LocalizationState>::SharedPtr localization_sub_;
-  bool engage_was_ = false, disengage_was_ = false;
+  bool engage_was_ = false, disengage_was_ = false, joy_seen_ = false;
+  double joystick_timeout_;
+  rclcpp::Time joy_time_;
   double follower_timeout_;
   int engage_button_, disengage_button_;
   std::string message_;

@@ -47,6 +47,14 @@ if [ $RULES_CHANGED -eq 1 ]; then
     sudo udevadm settle
 fi
 
+# Bluetooth game controllers: notice one going out of range within 0.5 s, not after the 3 s it asks for. udev runs
+# this when a controller connects (99-joypad-bluetooth-link.rules); run it now for one already connected.
+if ! cmp -s "$CURRENT_SCRIPT_PATH/joystick_link.bash" /usr/local/sbin/f1tenth-joystick-link; then
+    echo -e "$BASH_INFO Installing /usr/local/sbin/f1tenth-joystick-link"
+    sudo install -m 0755 "$CURRENT_SCRIPT_PATH/joystick_link.bash" /usr/local/sbin/f1tenth-joystick-link
+fi
+sudo systemd-run --no-block --quiet /usr/local/sbin/f1tenth-joystick-link
+
 # Serial devices need dialout; joy (SDL) needs input when not on the local desktop session (e.g. over SSH).
 for GROUP in dialout input; do
     if ! id -nG "$USER" | grep -qw "$GROUP"; then

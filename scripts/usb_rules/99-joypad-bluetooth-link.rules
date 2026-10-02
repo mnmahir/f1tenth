@@ -1,0 +1,3 @@
+# Xbox Wireless Controller over Bluetooth: notice it going out of range within 0.5 s instead of 3 s
+# (scripts/joystick_link.bash, installed as /usr/local/sbin/f1tenth-joystick-link by interface_bringup.bash)
+ACTION=="add", SUBSYSTEM=="hidraw", KERNELS=="0005:045E:0B20.*", RUN+="/usr/bin/systemd-run --no-block --quiet /usr/local/sbin/f1tenth-joystick-link"
