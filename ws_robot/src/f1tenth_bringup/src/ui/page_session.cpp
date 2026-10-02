@@ -37,6 +37,8 @@ constexpr char kSafetyNode[] = "/autonomous_safety_brake";
 constexpr char kAvoidanceNode[] = "/avoidance_controller_node";
 constexpr char kFollowerNode[] = "/pure_pursuit";
 constexpr char kBoostNode[] = "/teleop_speed_multiplier";
+constexpr char kCameraNode[] = "/camera";
+constexpr char kRecorderNode[] = "/path_recorder";
 
 QValidator * nameValidator(QObject * parent)
 {
@@ -413,6 +415,160 @@ DrivePanel::DrivePanel(RosBridge * ros, QWidget * parent)
   autonomous->body()->addWidget(autonomous_hint_);
   root->addWidget(autonomous);
 
+
+  auto * timing = new Card("Timing");
+  auto * reset = makeButton("", theme::icon::restart, "ghost");
+  reset->setToolTip("Reset lap times");
+  timing->header()->addWidget(reset);
+  timing_ = new TimingTower();
+  timing->body()->addWidget(timing_);
+  root->addWidget(timing);
+  auto * aids = new DriverAidsCard(ros);
+  connect(aids, &Page::message, this, &Page::message);
+  root->addWidget(aids);
+  root->addStretch(1);
+
+  connect(autonomous_, &QPushButton::clicked, this, [this]() {
+      bool engage = !drive_.autonomous_enabled;
+      autonomous_->setEnabled(false);
+      ros_->setAutonomous(engage, [this](bool ok, const QString & text) {
+        autonomous_->setEnabled(true);
+        Q_EMIT message(ok ? Level::Ok : Level::Error, text);
+      });
+    });
+  connect(reset, &QPushButton::clicked, this, [this]() {
+      timing_->reset();
+      ros_->resetLap(report());
+    });
+  connect(ros_, &RosBridge::driveState, this, &DrivePanel::onDrive);
+  connect(localization_, &LocalizationControls::changed, this, &DrivePanel::updateChecklist);
+  connect(localization_, &LocalizationControls::message, this, &Page::message);
+  connect(ros_, &RosBridge::supervisorState, this, [this](const SupervisorState & state) {
+      QString map = QString::fromStdString(state.map), path = QString::fromStdString(state.path);
+      if (map != map_ || path != path_) {
+        map_ = map;
+        path_ = path;
+        updateChecklist();
+      }
+    });
+  connect(ros_, &RosBridge::telemetry, this, [this](const Telemetry & t) {
+      bool estop = t.estop || ros_->estopHeldHere();
+      if (t.joystick_connected != joystick_ || estop != estop_) {
+        joystick_ = t.joystick_connected;
+        estop_ = estop;
+        updateChecklist();
+      }
+    });
+  connect(ros_, &RosBridge::estopChanged, this, [this](bool engaged, bool held_here) {
+      estop_ = engaged || held_here;
+      updateChecklist();
+    });
+  connect(ros_, &RosBridge::lapState, timing_, &TimingTower::setLap);
+
+  DriveState idle;
+  onDrive(idle);
+}
+
+void DriverAidsCard::refreshParameters()
+{
+  auto fetch = [this](const QString & node, const QStringList & names) {
+      ros_->getParameters(node, names, [this, node](bool ok, const std::vector<rclcpp::Parameter> & values) {
+        if (ok) {
+          for (const auto & p : values) {
+            applyParameter(node, p);
+          }
+        }
+      });
+    };
+  QStringList nodes = ros_->nodes();
+  safety_->setEnabled(nodes.contains(kSafetyNode));
+  avoidance_->setEnabled(nodes.contains(kAvoidanceNode));
+  auto_speed_->setEnabled(nodes.contains(kFollowerNode));
+  boost_->setEnabled(nodes.contains(kBoostNode));
+  if (nodes.contains(kSafetyNode)) {fetch(kSafetyNode, {"enabled"});}
+  if (nodes.contains(kAvoidanceNode)) {fetch(kAvoidanceNode, {"enabled"});}
+  if (nodes.contains(kFollowerNode)) {fetch(kFollowerNode, {"velocity_percentage"});}
+  if (nodes.contains(kBoostNode)) {fetch(kBoostNode, {"max_multiplier"});}
+}
+
+void DriverAidsCard::applyParameter(const QString & node, const rclcpp::Parameter & p)
+{
+  auto type = p.get_type();
+  if (p.get_name() == "enabled" && type == rclcpp::ParameterType::PARAMETER_BOOL) {
+    if (node == kSafetyNode) {safety_->setChecked(p.as_bool());}
+    if (node == kAvoidanceNode) {avoidance_->setChecked(p.as_bool());}
+  } else if (node == kFollowerNode && p.get_name() == "velocity_percentage" &&
+    type == rclcpp::ParameterType::PARAMETER_DOUBLE && !auto_speed_->isSliderDown())
+  {
+    QSignalBlocker block(auto_speed_);
+    auto_speed_->setValue(static_cast<int>(std::round(p.as_double() * 100.0)));
+    auto_speed_value_->setText(QString("%1%").arg(auto_speed_->value()));
+  } else if (node == kBoostNode && p.get_name() == "max_multiplier" &&
+    type == rclcpp::ParameterType::PARAMETER_DOUBLE && !boost_->isSliderDown())
+  {
+    QSignalBlocker block(boost_);
+    boost_->setValue(static_cast<int>(std::round(p.as_double() * 10.0)));
+    boost_value_->setText(QString("x%1").arg(boost_->value() / 10.0, 0, 'f', 1));
+  }
+}
+
+void DriverAidsCard::onParameterEvent(const ParameterEvent & event)
+{
+  QString node = QString::fromStdString(event.node);
+  for (const auto & p : event.changed_parameters) {
+    applyParameter(node, rclcpp::Parameter::from_parameter_msg(p));
+  }
+}
+
+void DrivePanel::onDrive(const DriveState & d)
+{
+  drive_ = d;
+  switch (d.source) {
+    case DriveState::AUTONOMOUS: source_->set("AUTONOMOUS", theme::green, Qt::black); break;
+    case DriveState::ASSIST: source_->set("ASSISTED", theme::purple); break;
+    case DriveState::MANUAL: source_->set("MANUAL", theme::red); break;
+    default: source_->set(d.autonomous_enabled ? "AUTONOMOUS ARMED" : "NO INPUT", theme::bg3); break;
+  }
+  drive_message_->setText(QString::fromStdString(d.message));
+  updateChecklist();
+}
+
+void DrivePanel::updateChecklist()
+{
+  bool track = !map_.isEmpty() && !path_.isEmpty();
+  bool localized = localization_->localized();
+  bool follower = drive_.follower_available;
+  track_row_->set(track ? theme::green : theme::redBright,
+    track ? map_ + "  ·  " + path_ : "Start a MANUAL session with both on HOME");
+  follower_row_->set(follower ? theme::green : (track ? theme::yellow : theme::text3),
+    follower ? "Ready" : (track ? "Starting..." : "Runs with a map and a path"));
+  joystick_row_->set(joystick_ ? theme::green : theme::yellow,
+    joystick_ ? "RB is your kill switch" : "Not connected: only E-STOP can stop the car");
+  bool ready = track && localized && follower && !estop_;
+  if (drive_.autonomous_enabled) {
+    autonomous_->setText("DISENGAGE");
+    autonomous_->setProperty("role", "primary");
+    autonomous_->setIcon(glyphIcon(theme::icon::stop, theme::text, 16));
+    autonomous_->setEnabled(true);
+    autonomous_hint_->setText("Stop: this button, B or RT on the joystick, RB kill switch, or E-STOP.");
+  } else {
+    autonomous_->setText("ENGAGE AUTONOMOUS");
+    autonomous_->setProperty("role", "go");
+    autonomous_->setIcon(glyphIcon(theme::icon::rocket, theme::text, 16));
+    autonomous_->setEnabled(ready);
+    autonomous_hint_->setText(estop_ ? "Release the E-STOP first." : (ready ?
+      "Or press A on the joystick. Speed: AUTONOMOUS SPEED below." : "Engage unlocks when everything above is green."));
+  }
+  repolish(autonomous_);
+}
+
+// ---- DriverAidsCard ----
+
+DriverAidsCard::DriverAidsCard(RosBridge * ros, QWidget * parent)
+: Page(ros, parent)
+{
+  auto * root = new QVBoxLayout(this);
+  root->setContentsMargins(0, 0, 0, 0);
   auto * aids = new Card("Driver aids");
   assist_ = new Toggle("Steering assist (follow the line)");
   assist_->setAccent(theme::purple);
@@ -433,24 +589,11 @@ DrivePanel::DrivePanel(RosBridge * ros, QWidget * parent)
   slider_row("Autonomous speed", auto_speed_, auto_speed_value_, 10, 100);
   slider_row("Boost (LT) up to", boost_, boost_value_, 10, 100);
   root->addWidget(aids);
+  auto * keys = makeLabel("Joystick: X steering assist, Y obstacle avoidance, View collision brake. "
+    "Short buzz: on, long buzz: off.", 11, QFont::Normal, theme::text3);
+  keys->setWordWrap(true);
+  aids->body()->addWidget(keys);
 
-  auto * timing = new Card("Timing");
-  auto * reset = makeButton("", theme::icon::restart, "ghost");
-  reset->setToolTip("Reset lap times");
-  timing->header()->addWidget(reset);
-  timing_ = new TimingTower();
-  timing->body()->addWidget(timing_);
-  root->addWidget(timing);
-  root->addStretch(1);
-
-  connect(autonomous_, &QPushButton::clicked, this, [this]() {
-      bool engage = !drive_.autonomous_enabled;
-      autonomous_->setEnabled(false);
-      ros_->setAutonomous(engage, [this](bool ok, const QString & text) {
-        autonomous_->setEnabled(true);
-        Q_EMIT message(ok ? Level::Ok : Level::Error, text);
-      });
-    });
   connect(assist_, &Toggle::clicked, this, [this](bool on) {
       assist_->setPending(true);
       ros_->setAssist(on, [this, on](bool ok, const QString & text) {
@@ -501,136 +644,27 @@ DrivePanel::DrivePanel(RosBridge * ros, QWidget * parent)
   debounce(boost_, [this]() {
       ros_->setParameter(kBoostNode, rclcpp::Parameter("max_multiplier", boost_->value() / 10.0), report("Boost"));
     });
-  connect(reset, &QPushButton::clicked, this, [this]() {
-      timing_->reset();
-      ros_->resetLap(report());
-    });
-  connect(ros_, &RosBridge::driveState, this, &DrivePanel::onDrive);
-  connect(localization_, &LocalizationControls::changed, this, &DrivePanel::updateChecklist);
-  connect(localization_, &LocalizationControls::message, this, &Page::message);
-  connect(ros_, &RosBridge::supervisorState, this, [this](const SupervisorState & state) {
-      QString map = QString::fromStdString(state.map), path = QString::fromStdString(state.path);
-      if (map != map_ || path != path_) {
-        map_ = map;
-        path_ = path;
-        updateChecklist();
-      }
-    });
-  connect(ros_, &RosBridge::telemetry, this, [this](const Telemetry & t) {
-      bool estop = t.estop || ros_->estopHeldHere();
-      if (t.joystick_connected != joystick_ || estop != estop_) {
-        joystick_ = t.joystick_connected;
-        estop_ = estop;
-        updateChecklist();
-      }
-    });
-  connect(ros_, &RosBridge::estopChanged, this, [this](bool engaged, bool held_here) {
-      estop_ = engaged || held_here;
-      updateChecklist();
-    });
-  connect(ros_, &RosBridge::lapState, timing_, &TimingTower::setLap);
-  connect(ros_, &RosBridge::parameterEvent, this, &DrivePanel::onParameterEvent);
+  connect(ros_, &RosBridge::driveState, this, &DriverAidsCard::onDrive);
+  connect(ros_, &RosBridge::parameterEvent, this, &DriverAidsCard::onParameterEvent);
   connect(ros_, &RosBridge::nodesChanged, this, [this]() {refreshParameters();});
-
   DriveState idle;
   onDrive(idle);
 }
 
-void DrivePanel::refreshParameters()
+void DriverAidsCard::showEvent(QShowEvent * event)
 {
-  auto fetch = [this](const QString & node, const QStringList & names) {
-      ros_->getParameters(node, names, [this, node](bool ok, const std::vector<rclcpp::Parameter> & values) {
-        if (ok) {
-          for (const auto & p : values) {
-            applyParameter(node, p);
-          }
-        }
-      });
-    };
-  QStringList nodes = ros_->nodes();
-  safety_->setEnabled(nodes.contains(kSafetyNode));
-  avoidance_->setEnabled(nodes.contains(kAvoidanceNode));
-  auto_speed_->setEnabled(nodes.contains(kFollowerNode));
-  boost_->setEnabled(nodes.contains(kBoostNode));
-  if (nodes.contains(kSafetyNode)) {fetch(kSafetyNode, {"enabled"});}
-  if (nodes.contains(kAvoidanceNode)) {fetch(kAvoidanceNode, {"enabled"});}
-  if (nodes.contains(kFollowerNode)) {fetch(kFollowerNode, {"velocity_percentage"});}
-  if (nodes.contains(kBoostNode)) {fetch(kBoostNode, {"max_multiplier"});}
+  Page::showEvent(event);
+  refreshParameters();
 }
 
-void DrivePanel::applyParameter(const QString & node, const rclcpp::Parameter & p)
+void DriverAidsCard::onDrive(const DriveState & d)
 {
-  auto type = p.get_type();
-  if (p.get_name() == "enabled" && type == rclcpp::ParameterType::PARAMETER_BOOL) {
-    if (node == kSafetyNode) {safety_->setChecked(p.as_bool());}
-    if (node == kAvoidanceNode) {avoidance_->setChecked(p.as_bool());}
-  } else if (node == kFollowerNode && p.get_name() == "velocity_percentage" &&
-    type == rclcpp::ParameterType::PARAMETER_DOUBLE && !auto_speed_->isSliderDown())
-  {
-    QSignalBlocker block(auto_speed_);
-    auto_speed_->setValue(static_cast<int>(std::round(p.as_double() * 100.0)));
-    auto_speed_value_->setText(QString("%1%").arg(auto_speed_->value()));
-  } else if (node == kBoostNode && p.get_name() == "max_multiplier" &&
-    type == rclcpp::ParameterType::PARAMETER_DOUBLE && !boost_->isSliderDown())
-  {
-    QSignalBlocker block(boost_);
-    boost_->setValue(static_cast<int>(std::round(p.as_double() * 10.0)));
-    boost_value_->setText(QString("x%1").arg(boost_->value() / 10.0, 0, 'f', 1));
-  }
-}
-
-void DrivePanel::onParameterEvent(const ParameterEvent & event)
-{
-  QString node = QString::fromStdString(event.node);
-  for (const auto & p : event.changed_parameters) {
-    applyParameter(node, rclcpp::Parameter::from_parameter_msg(p));
-  }
-}
-
-void DrivePanel::onDrive(const DriveState & d)
-{
-  drive_ = d;
-  switch (d.source) {
-    case DriveState::AUTONOMOUS: source_->set("AUTONOMOUS", theme::green, Qt::black); break;
-    case DriveState::ASSIST: source_->set("ASSISTED", theme::purple); break;
-    case DriveState::MANUAL: source_->set("MANUAL", theme::red); break;
-    default: source_->set(d.autonomous_enabled ? "AUTONOMOUS ARMED" : "NO INPUT", theme::bg3); break;
-  }
-  drive_message_->setText(QString::fromStdString(d.message));
+  // Steering assist steers along a path: it needs a manual session with a map and a path
   assist_->setEnabled(d.follower_available);
+  assist_->setToolTip(d.follower_available ? QString() : "Needs a manual session with a map and a path");
   if (!assist_->isDown()) {
     assist_->setChecked(d.assist_enabled);
   }
-  updateChecklist();
-}
-
-void DrivePanel::updateChecklist()
-{
-  bool track = !map_.isEmpty() && !path_.isEmpty();
-  bool localized = localization_->localized();
-  bool follower = drive_.follower_available;
-  track_row_->set(track ? theme::green : theme::redBright,
-    track ? map_ + "  ·  " + path_ : "Start a MANUAL session with both on HOME");
-  follower_row_->set(follower ? theme::green : (track ? theme::yellow : theme::text3),
-    follower ? "Ready" : (track ? "Starting..." : "Runs with a map and a path"));
-  joystick_row_->set(joystick_ ? theme::green : theme::yellow,
-    joystick_ ? "RB is your kill switch" : "Not connected: only E-STOP can stop the car");
-  bool ready = track && localized && follower && !estop_;
-  if (drive_.autonomous_enabled) {
-    autonomous_->setText("DISENGAGE");
-    autonomous_->setProperty("role", "primary");
-    autonomous_->setIcon(glyphIcon(theme::icon::stop, theme::text, 16));
-    autonomous_->setEnabled(true);
-    autonomous_hint_->setText("Stop: this button, B or RT on the joystick, RB kill switch, or E-STOP.");
-  } else {
-    autonomous_->setText("ENGAGE AUTONOMOUS");
-    autonomous_->setProperty("role", "go");
-    autonomous_->setIcon(glyphIcon(theme::icon::rocket, theme::text, 16));
-    autonomous_->setEnabled(ready);
-    autonomous_hint_->setText(estop_ ? "Release the E-STOP first." : (ready ?
-      "Or press A on the joystick. Speed: AUTONOMOUS SPEED below." : "Engage unlocks when everything above is green."));
-  }
-  repolish(autonomous_);
 }
 
 // ---- MappingPanel ----
@@ -686,6 +720,9 @@ MappingPanel::MappingPanel(RosBridge * ros, QWidget * parent)
   auto * params = makeButton("SLAM PARAMETERS", theme::icon::tune);
   tips->body()->addWidget(params);
   root->addWidget(tips);
+  auto * aids = new DriverAidsCard(ros);
+  connect(aids, &Page::message, this, &Page::message);
+  root->addWidget(aids);
   root->addStretch(1);
 
   connect(pause_, &QPushButton::clicked, this, [this]() {ros_->toggleMappingPause(report());});
@@ -780,10 +817,32 @@ PathPanel::PathPanel(RosBridge * ros, QWidget * parent)
     tiles->addWidget(tile);
   }
   rec->body()->addLayout(tiles);
+  // A saved lap can be driven as it is, without the optimizer: at the speeds it was driven or at one speed
+  rec->body()->addWidget(makeCaption("Speed when driven"));
+  lap_speed_mode_ = new FocusWheel<QComboBox>();
+  lap_speed_mode_->addItem("Speeds as driven", "recorded");
+  lap_speed_mode_->addItem("Constant speed", "constant");
+  lap_speed_ = new FocusWheel<QDoubleSpinBox>();
+  lap_speed_->setRange(0.3, 6.0);
+  lap_speed_->setSingleStep(0.1);
+  lap_speed_->setDecimals(1);
+  lap_speed_->setValue(1.0);
+  lap_speed_->setSuffix(" m/s");
+  lap_speed_->setEnabled(false);
+  auto * speed_row = row({lap_speed_mode_, lap_speed_});
+  speed_row->setStretch(0, 1);
+  rec->body()->addLayout(speed_row);
   record_name_ = new QLineEdit(defaultName("lap"));
   record_name_->setValidator(nameValidator(record_name_));
   auto * save = makeButton("SAVE", theme::icon::save);
   rec->body()->addLayout(row({record_name_, save}));
+  drive_lap_ = makeButton("DRIVE THIS LAP", theme::icon::flag, "go");
+  drive_lap_->setEnabled(false);
+  rec->body()->addWidget(drive_lap_);
+  auto * lap_hint = makeLabel("The car drives these speeds times AUTONOMOUS SPEED (driver aids).", 11, QFont::Normal,
+    theme::text3);
+  lap_hint->setWordWrap(true);
+  rec->body()->addWidget(lap_hint);
   root->addWidget(rec);
 
   auto * race = new Card("Raceline optimizer");
@@ -826,6 +885,9 @@ PathPanel::PathPanel(RosBridge * ros, QWidget * parent)
   drive_it_->setEnabled(false);
   race->body()->addWidget(drive_it_);
   root->addWidget(race);
+  auto * aids = new DriverAidsCard(ros);
+  connect(aids, &Page::message, this, &Page::message);
+  root->addWidget(aids);
   root->addStretch(1);
 
   connect(record_, &QPushButton::clicked, this, [this]() {
@@ -838,14 +900,23 @@ PathPanel::PathPanel(RosBridge * ros, QWidget * parent)
       ros_->recorder(recording_ ? "stop" : "start", report());
     });
   connect(clear, &QPushButton::clicked, this, [this]() {ros_->recorder("clear", report());});
+  connect(lap_speed_mode_, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {
+      lap_speed_->setEnabled(lap_speed_mode_->currentData().toString() == "constant");
+    });
   connect(save, &QPushButton::clicked, this, [this, save]() {
       save->setEnabled(false);
-      ros_->saveRecording(record_name_->text().trimmed(), [this, save](bool ok, const QString & text) {
-        save->setEnabled(true);
-        Q_EMIT message(ok ? Level::Ok : Level::Error, text);
-        if (ok) {
-          // Offer the new lap as the optimizer's source once the supervisor lists it
+      // The recorder writes the speeds when it saves: tell it which first
+      auto done = [this, save](bool ok, const QString & text) {
+          save->setEnabled(true);
+          Q_EMIT message(ok ? Level::Ok : Level::Error, text);
+          if (!ok) {
+            return;
+          }
+          // Offer the new lap to drive, and as the optimizer's source once the supervisor lists it
           QString saved = record_name_->text().trimmed();
+          saved_lap_ = saved;
+          drive_lap_->setEnabled(true);
+          drive_lap_->setText("DRIVE " + saved.toUpper());
           record_name_->setText(defaultName("lap"));
           QTimer::singleShot(1200, this, [this, saved]() {
             int index = source_->findData(saved);
@@ -853,8 +924,20 @@ PathPanel::PathPanel(RosBridge * ros, QWidget * parent)
               source_->setCurrentIndex(index);
             }
           });
-        }
-      });
+        };
+      auto save_lap = [this, done]() {ros_->saveRecording(record_name_->text().trimmed(), done);};
+      auto set_speed = [this, done, save_lap](bool ok, const QString & text) {
+          if (!ok) {
+            return done(false, text);
+          }
+          ros_->setParameter(kRecorderNode, rclcpp::Parameter("constant_speed", lap_speed_->value()),
+            [done, save_lap](bool ok, const QString & text) {ok ? save_lap() : done(false, text);});
+        };
+      ros_->setParameter(kRecorderNode,
+        rclcpp::Parameter("speed_mode", lap_speed_mode_->currentData().toString().toStdString()), set_speed);
+    });
+  connect(drive_lap_, &QPushButton::clicked, this, [this]() {
+      ros_->setMode("manual", map_, saved_lap_, report());
     });
   connect(optimize_, &QPushButton::clicked, this, &PathPanel::optimize);
   connect(save_raceline_, &QPushButton::clicked, this, [this]() {
@@ -1032,8 +1115,10 @@ SessionPage::SessionPage(RosBridge * ros, const std::string & rviz_node_name, QW
   clear_trail->setToolTip("Clear the speed trail");
   auto * swap = makeButton("CAMERA", theme::icon::swap);
   swap->setToolTip("Swap the camera and the 3D view");
+  auto * rotate = makeButton("", theme::icon::rotateLeft, "ghost");
+  rotate->setToolTip("Turn the camera picture 90\u00b0 anticlockwise (saved on the car)");
   for (auto * w : {static_cast<QWidget *>(pose_), static_cast<QWidget *>(measure_), static_cast<QWidget *>(layers),
-      static_cast<QWidget *>(clear_trail), static_cast<QWidget *>(swap)})
+      static_cast<QWidget *>(clear_trail), static_cast<QWidget *>(swap), static_cast<QWidget *>(rotate)})
   {
     toolbar->addWidget(w);
     toolbar->addSpacing(6);
@@ -1146,6 +1231,38 @@ SessionPage::SessionPage(RosBridge * ros, const std::string & rviz_node_name, QW
         minimap_->setMap(image, resolution, ox, oy);
       }
     });
+  // Camera picture rotation: a parameter of the car's camera node, so every UI shows it the same way
+  connect(rotate, &QPushButton::clicked, this, [this]() {
+      ros_->setParameter(kCameraNode, rclcpp::Parameter("rotation", (camera_rotation_ + 90) % 360),
+        [this](bool ok, const QString & text) {
+          if (!ok) {
+            Q_EMIT message(Level::Error, text);
+            return;
+          }
+          ros_->saveParams(kCameraNode, report("Camera rotation"));  // and for the next start
+        });
+    });
+  connect(ros_, &RosBridge::parameterEvent, this, [this](const ParameterEvent & event) {
+      if (QString::fromStdString(event.node) != kCameraNode) {
+        return;
+      }
+      for (const auto & msg : event.changed_parameters) {
+        auto p = rclcpp::Parameter::from_parameter_msg(msg);
+        if (p.get_name() == "rotation" && p.get_type() == rclcpp::ParameterType::PARAMETER_INTEGER) {
+          setCameraRotation(static_cast<int>(p.as_int()));
+        }
+      }
+    });
+  connect(ros_, &RosBridge::nodesChanged, this, [this]() {
+      if (!ros_->nodes().contains(kCameraNode)) {
+        return;
+      }
+      ros_->getParameters(kCameraNode, {"rotation"}, [this](bool ok, const std::vector<rclcpp::Parameter> & values) {
+        if (ok && !values.empty() && values[0].get_type() == rclcpp::ParameterType::PARAMETER_INTEGER) {
+          setCameraRotation(static_cast<int>(values[0].as_int()));
+        }
+      });
+    });
   connect(ros_, &RosBridge::cameraFrame, this, [this](const QImage & image, double fps) {
       (camera_big_shown_ ? camera_big_ : camera_small_)->setFrame(image, fps);
     });
@@ -1204,6 +1321,13 @@ void SessionPage::startPoseOnMap()
   scene_->startPoseTool();
 }
 
+void SessionPage::setCameraRotation(int degrees)
+{
+  camera_rotation_ = degrees;
+  camera_big_->setRotation(degrees);
+  camera_small_->setRotation(degrees);
+}
+
 void SessionPage::swapCamera()
 {
   camera_big_shown_ = !camera_big_shown_;
@@ -1246,7 +1370,6 @@ void SessionPage::setMode(const QString & mode)
   mode_ = mode;
   if (mode == "manual") {
     panels_->setCurrentIndex(1);
-    drive_->refreshParameters();
   } else if (mode == "mapping") {
     panels_->setCurrentIndex(2);
   } else if (mode == "path") {

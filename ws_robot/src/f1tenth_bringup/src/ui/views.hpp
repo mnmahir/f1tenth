@@ -107,6 +107,8 @@ public:
   explicit CameraView(QWidget * parent = nullptr);
   void setFrame(const QImage & image, double fps);
   void setCaption(const QString & caption) {caption_ = caption; update();}
+  // Degrees to turn the picture anticlockwise, for a camera mounted on its side
+  void setRotation(int degrees) {rotation_ = ((degrees % 360) + 360) % 360;}
   QSize sizeHint() const override {return QSize(400, 225);}
   int heightForWidth(int width) const override {return width * 9 / 16;}
   bool hasHeightForWidth() const override {return true;}
@@ -120,6 +122,7 @@ protected:
 
 private:
   QImage frame_;
+  int rotation_ = 0;
   double fps_ = 0.0;
   qint64 last_frame_ms_ = 0;
   QString caption_ = "ONBOARD CAMERA";

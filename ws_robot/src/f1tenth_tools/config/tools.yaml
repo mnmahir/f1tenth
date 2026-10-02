@@ -7,6 +7,7 @@ camera:
     fps: 30
     max_publish_rate: 30.0                  # Hz; lower it to save Wi-Fi bandwidth for a remote UI
     frame_id: camera_optical_1_link
+    rotation: 0                             # degrees the UI turns the picture anticlockwise (camera on its side)
 
 telemetry_aggregator:
   ros__parameters:
@@ -19,6 +20,11 @@ drive_coordinator:
     follower_timeout: 0.3
     engage_button: 0                        # A: engage autonomous
     disengage_button: 1                     # B: disengage autonomous
+    assist_button: 3                        # X: steering assist on/off
+    avoidance_button: 4                     # Y: obstacle avoidance on/off
+    brake_button: 10                        # View: collision brake on/off
+    rumble_on: 0.15                         # s the controller buzzes when an aid turns on
+    rumble_off: 0.6                         # s when it turns off
 
 path_recorder:
   ros__parameters:

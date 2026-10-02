@@ -200,14 +200,11 @@ class DrivePanel : public Page
 
 public:
   explicit DrivePanel(RosBridge * ros, QWidget * parent = nullptr);
-  void refreshParameters();
   LocalizationControls * localization() const {return localization_;}
 
 private:
   void onDrive(const DriveState & d);
   void updateChecklist();
-  void onParameterEvent(const ParameterEvent & event);
-  void applyParameter(const QString & node, const rclcpp::Parameter & p);
 
   SkewBadge * source_ = nullptr;
   QLabel * drive_message_ = nullptr;
@@ -220,6 +217,28 @@ private:
   QString map_, path_;
   bool joystick_ = false;
   bool estop_ = false;
+  TimingTower * timing_ = nullptr;
+  DriveState drive_;
+};
+
+// Driver aids at the bottom of every session's panel: steering assist, collision brake, obstacle avoidance and the
+// speed settings, as the car's nodes report them. The joystick switches the same aids (X, Y, View).
+class DriverAidsCard : public Page
+{
+  Q_OBJECT
+
+public:
+  explicit DriverAidsCard(RosBridge * ros, QWidget * parent = nullptr);
+  void refreshParameters();
+
+protected:
+  void showEvent(QShowEvent * event) override;
+
+private:
+  void onDrive(const DriveState & d);
+  void onParameterEvent(const ParameterEvent & event);
+  void applyParameter(const QString & node, const rclcpp::Parameter & p);
+
   Toggle * assist_ = nullptr;
   Toggle * safety_ = nullptr;
   Toggle * avoidance_ = nullptr;
@@ -227,8 +246,6 @@ private:
   QLabel * auto_speed_value_ = nullptr;
   QSlider * boost_ = nullptr;
   QLabel * boost_value_ = nullptr;
-  TimingTower * timing_ = nullptr;
-  DriveState drive_;
 };
 
 class MappingPanel : public Page
@@ -281,6 +298,10 @@ private:
   ValueTile * length_ = nullptr;
   ValueTile * top_speed_ = nullptr;
   QLineEdit * record_name_ = nullptr;
+  QComboBox * lap_speed_mode_ = nullptr;
+  QDoubleSpinBox * lap_speed_ = nullptr;
+  QPushButton * drive_lap_ = nullptr;
+  QString saved_lap_;
   QComboBox * source_ = nullptr;
   QDoubleSpinBox * margin_ = nullptr;
   QDoubleSpinBox * max_speed_ = nullptr;
@@ -318,6 +339,7 @@ private:
   void onSupervisor(const SupervisorState & state);
   void setMode(const QString & mode);
   void swapCamera();
+  void setCameraRotation(int degrees);
   void startPoseOnMap();
   void updateCameraWanted();
   void applyLayerDefaults(const QString & mode);
@@ -337,6 +359,7 @@ private:
   ElidedLabel * status_ = nullptr;
   std::map<SceneView::View, QPushButton *> view_buttons_;
   QPushButton * follow_ = nullptr;
+  int camera_rotation_ = 0;
   QPushButton * pose_ = nullptr;
   QPushButton * measure_ = nullptr;
   QString mode_;

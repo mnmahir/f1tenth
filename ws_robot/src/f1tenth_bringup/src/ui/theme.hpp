@@ -105,6 +105,7 @@ inline const QChar link{0xe157};
 inline const QChar linkOff{0xe16f};
 inline const QChar info{0xe88e};
 inline const QChar swap{0xe8d4};
+inline const QChar rotateLeft{0xe419};
 inline const QChar expand{0xf1ce};
 inline const QChar collapse{0xf1cf};
 inline const QChar camera{0xe3b0};

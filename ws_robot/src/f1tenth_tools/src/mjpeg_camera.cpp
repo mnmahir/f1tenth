@@ -30,6 +30,22 @@ public:
     fps_ = declare_parameter<int>("fps", 30);
     max_rate_ = declare_parameter<double>("max_publish_rate", 0.0);  // Hz, 0 = every frame
     frame_id_ = declare_parameter<std::string>("frame_id", "camera_optical_1_link");
+    // For a camera mounted on its side: how far the UI turns the picture anticlockwise (0, 90, 180 or 270
+    // degrees). The stream itself is not rotated, which would mean decoding and re-encoding every frame here.
+    declare_parameter<int>("rotation", 0);
+    param_cb_ = add_on_set_parameters_callback([](const std::vector<rclcpp::Parameter> & params) {
+      rcl_interfaces::msg::SetParametersResult result;
+      result.successful = true;
+      for (const auto & p : params) {
+        if (p.get_name() == "rotation" && (p.get_type() != rclcpp::ParameterType::PARAMETER_INTEGER ||
+          p.as_int() % 90 != 0 || p.as_int() < 0 || p.as_int() >= 360))
+        {
+          result.successful = false;
+          result.reason = "rotation must be 0, 90, 180 or 270";
+        }
+      }
+      return result;
+    });
 
     pub_ = create_publisher<sensor_msgs::msg::CompressedImage>(
       "/camera/image_raw/compressed", rclcpp::SensorDataQoS());
@@ -188,6 +204,7 @@ private:
   }
 
   std::string device_, frame_id_;
+  rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr param_cb_;
   int width_, height_, fps_;
   double max_rate_;
   int fd_ = -1;

@@ -5,6 +5,8 @@
 // map, and drops when the follower goes stale, localization is lost, the joystick disappears (no kill switch
 // any more), or the kill switch (teleop lock) or the UI E-stop is engaged, so releasing a lock never resumes
 // driving by itself.
+// Driver aids switch from the joystick too (X steering assist, Y obstacle avoidance, View collision brake); the
+// controller confirms with a short buzz for on and a long one for off.
 #include <chrono>
 #include <string>
 
@@ -13,6 +15,7 @@
 #include "f1tenth_bringup/msg/drive_state.hpp"
 #include "f1tenth_bringup/msg/localization_state.hpp"
 #include "sensor_msgs/msg/joy.hpp"
+#include "sensor_msgs/msg/joy_feedback.hpp"
 #include "std_msgs/msg/bool.hpp"
 #include "std_srvs/srv/set_bool.hpp"
 
@@ -32,6 +35,14 @@ public:
     localization_timeout_ = declare_parameter<double>("localization_timeout", 1.5);  // s lost before disengaging
     // joy_node repeats the last state at 20 Hz while the controller is connected and stops when it disconnects
     joystick_timeout_ = declare_parameter<double>("joystick_timeout", 0.5);
+    assist_button_ = declare_parameter<int>("assist_button", 3);       // X: steering assist
+    avoidance_button_ = declare_parameter<int>("avoidance_button", 4);  // Y: obstacle avoidance
+    brake_button_ = declare_parameter<int>("brake_button", 10);         // View: collision brake
+    rumble_on_ = declare_parameter<double>("rumble_on", 0.15);          // s of rumble when an aid turns on
+    rumble_off_ = declare_parameter<double>("rumble_off", 0.6);         // s when it turns off
+    avoidance_client_ = std::make_shared<rclcpp::AsyncParametersClient>(this, "/avoidance_controller_node");
+    brake_client_ = std::make_shared<rclcpp::AsyncParametersClient>(this, "/autonomous_safety_brake");
+    feedback_pub_ = create_publisher<sensor_msgs::msg::JoyFeedback>("/joy/set_feedback", 10);
 
     teleop_pub_ = create_publisher<AckermannStamped>("cmd_teleop/joy", 10);
     auto_pub_ = create_publisher<AckermannStamped>("cmd_auto/drive", 10);
@@ -86,6 +97,11 @@ public:
         if (p.get_name() == "require_localization") {require_localization_ = p.as_bool();}
         if (p.get_name() == "localization_timeout") {localization_timeout_ = p.as_double();}
         if (p.get_name() == "joystick_timeout") {joystick_timeout_ = p.as_double();}
+        if (p.get_name() == "assist_button") {assist_button_ = static_cast<int>(p.as_int());}
+        if (p.get_name() == "avoidance_button") {avoidance_button_ = static_cast<int>(p.as_int());}
+        if (p.get_name() == "brake_button") {brake_button_ = static_cast<int>(p.as_int());}
+        if (p.get_name() == "rumble_on") {rumble_on_ = p.as_double();}
+        if (p.get_name() == "rumble_off") {rumble_off_ = p.as_double();}
       }
       rcl_interfaces::msg::SetParametersResult result;
       result.successful = true;
@@ -170,6 +186,86 @@ private:
     }
     engage_was_ = engage;
     disengage_was_ = disengage;
+
+    bool assist = pressed(assist_button_), avoidance = pressed(avoidance_button_), brake = pressed(brake_button_);
+    if (assist && !assist_was_) {
+      bool on = !assist_enabled_;
+      set_parameter(rclcpp::Parameter("assist_enabled", on));
+      say(std::string("Steering assist ") + (on ? "on" : "off") + " (joystick)");
+      rumble(on ? rumble_on_ : rumble_off_);
+    }
+    if (avoidance && !avoidance_was_) {
+      toggle_enabled(avoidance_client_, "Obstacle avoidance");
+    }
+    if (brake && !brake_was_) {
+      toggle_enabled(brake_client_, "Collision brake");
+    }
+    assist_was_ = assist;
+    avoidance_was_ = avoidance;
+    brake_was_ = brake;
+  }
+
+  // Flips another node's "enabled" parameter (avoidance controller, safety brake) and buzzes the result
+  void toggle_enabled(const rclcpp::AsyncParametersClient::SharedPtr & client, const std::string & what)
+  {
+    if (!client->service_is_ready()) {
+      say(what + " is not running", true);
+      return;
+    }
+    client->get_parameters({"enabled"},
+      [this, client, what](std::shared_future<std::vector<rclcpp::Parameter>> got) {
+        std::vector<rclcpp::Parameter> values;
+        try {
+          values = got.get();
+        } catch (const std::exception &) {
+          return;
+        }
+        if (values.empty() || values[0].get_type() != rclcpp::ParameterType::PARAMETER_BOOL) {
+          return;
+        }
+        bool on = !values[0].as_bool();
+        client->set_parameters({rclcpp::Parameter("enabled", on)},
+          [this, on, what](std::shared_future<std::vector<rcl_interfaces::msg::SetParametersResult>> set) {
+            try {
+              auto results = set.get();
+              if (results.empty() || !results[0].successful) {
+                return;
+              }
+            } catch (const std::exception &) {
+              return;
+            }
+            say(what + (on ? " on" : " OFF") + " (joystick)", !on);
+            rumble(on ? rumble_on_ : rumble_off_);
+          });
+      });
+  }
+
+  // Joystick rumble through joy_node; repeated while it lasts, since each command only rumbles for a while
+  void rumble(double seconds)
+  {
+    rumble_until_ = now() + rclcpp::Duration::from_seconds(seconds);
+    send_rumble(1.0);
+    if (!rumble_timer_) {
+      rumble_timer_ = create_wall_timer(std::chrono::milliseconds(50), [this]() {
+          if (now() >= rumble_until_) {
+            send_rumble(0.0);
+            rumble_timer_->cancel();
+          } else {
+            send_rumble(1.0);
+          }
+        });
+    } else {
+      rumble_timer_->reset();
+    }
+  }
+
+  void send_rumble(double intensity)
+  {
+    sensor_msgs::msg::JoyFeedback feedback;
+    feedback.type = sensor_msgs::msg::JoyFeedback::TYPE_RUMBLE;
+    feedback.id = 0;
+    feedback.intensity = static_cast<float>(intensity);
+    feedback_pub_->publish(feedback);
   }
 
   void publish_state()
@@ -210,6 +306,13 @@ private:
   rclcpp::Time localization_time_, localized_time_, message_time_;
   rclcpp::Subscription<f1tenth_bringup::msg::LocalizationState>::SharedPtr localization_sub_;
   bool engage_was_ = false, disengage_was_ = false, joy_seen_ = false;
+  bool assist_was_ = false, avoidance_was_ = false, brake_was_ = false;
+  int assist_button_, avoidance_button_, brake_button_;
+  double rumble_on_, rumble_off_;
+  rclcpp::Time rumble_until_;
+  rclcpp::TimerBase::SharedPtr rumble_timer_;
+  rclcpp::AsyncParametersClient::SharedPtr avoidance_client_, brake_client_;
+  rclcpp::Publisher<sensor_msgs::msg::JoyFeedback>::SharedPtr feedback_pub_;
   double joystick_timeout_;
   rclcpp::Time joy_time_;
   double follower_timeout_;

@@ -5,6 +5,7 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QTimer>
+#include <QTransform>
 #include <QWheelEvent>
 
 #include <algorithm>
@@ -386,7 +387,8 @@ CameraView::CameraView(QWidget * parent)
 
 void CameraView::setFrame(const QImage & image, double fps)
 {
-  frame_ = image;
+  // QTransform turns clockwise for positive angles on screen
+  frame_ = rotation_ ? image.transformed(QTransform().rotate(-rotation_)) : image;
   fps_ = fps;
   last_frame_ms_ = QDateTime::currentMSecsSinceEpoch();
   update();
