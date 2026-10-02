@@ -283,6 +283,9 @@ HomePage::HomePage(RosBridge * ros, QWidget * parent)
     {"RB", "Kill switch: nothing drives until LB"},
     {"A", "Engage autonomous (map + path session)"},
     {"B", "Disengage autonomous"},
+    {"X", "Collision brake on/off (buzz: short on, long off)"},
+    {"Y", "Obstacle avoidance on/off"},
+    {"D-PAD UP", "Steering assist on/off"},
     {"SPACE", "UI emergency stop (keyboard, any page)"},
   };
   int k = 0;

@@ -37,20 +37,22 @@ joy_teleop:
           scale: 0.4
           offset: 0.0
 
-    joy_control_auto_test:
-      type: topic
-      interface_type: ackermann_msgs/msg/AckermannDriveStamped
-      topic_name: cmd_auto/joy
-      deadman_buttons: [3]
-      axis_mappings:
-        drive-speed:
-          axis: 1
-          scale: 10.0
-          offset: 0.0
-        drive-steering_angle:
-          axis: 2
-          scale: 0.4
-          offset: 0.0
+    # Off: X switches the collision brake now (f1tenth_tools drive_coordinator). This drove the autonomous channel
+    # from the stick at 10x speed without the LB deadman while X was held.
+    # joy_control_auto_test:
+    #   type: topic
+    #   interface_type: ackermann_msgs/msg/AckermannDriveStamped
+    #   topic_name: cmd_auto/joy
+    #   deadman_buttons: [3]
+    #   axis_mappings:
+    #     drive-speed:
+    #       axis: 1
+    #       scale: 10.0
+    #       offset: 0.0
+    #     drive-steering_angle:
+    #       axis: 2
+    #       scale: 0.4
+    #       offset: 0.0
     
     # gradual_braking:
     #   type: topic

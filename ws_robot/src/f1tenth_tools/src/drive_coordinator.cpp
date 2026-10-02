@@ -5,10 +5,11 @@
 // map, and drops when the follower goes stale, localization is lost, the joystick disappears (no kill switch
 // any more), or the kill switch (teleop lock) or the UI E-stop is engaged, so releasing a lock never resumes
 // driving by itself.
-// Driver aids switch from the joystick too (X steering assist, Y obstacle avoidance, View collision brake); the
+// Driver aids switch from the joystick too (X collision brake, Y obstacle avoidance, D-pad up steering assist); the
 // controller confirms with a short buzz for on and a long one for off.
 #include <chrono>
 #include <string>
+#include <utility>
 
 #include "rclcpp/rclcpp.hpp"
 #include "ackermann_msgs/msg/ackermann_drive_stamped.hpp"
@@ -35,9 +36,10 @@ public:
     localization_timeout_ = declare_parameter<double>("localization_timeout", 1.5);  // s lost before disengaging
     // joy_node repeats the last state at 20 Hz while the controller is connected and stops when it disconnects
     joystick_timeout_ = declare_parameter<double>("joystick_timeout", 0.5);
-    assist_button_ = declare_parameter<int>("assist_button", 3);       // X: steering assist
-    avoidance_button_ = declare_parameter<int>("avoidance_button", 4);  // Y: obstacle avoidance
-    brake_button_ = declare_parameter<int>("brake_button", 10);         // View: collision brake
+    // Each driver aid toggles on a button, or on a D-pad direction (an axis held at axis_value)
+    brake_input_ = declare_input("brake", 3, -1, 0.0);        // X: collision brake
+    avoidance_input_ = declare_input("avoidance", 4, -1, 0.0);  // Y: obstacle avoidance
+    assist_input_ = declare_input("assist", -1, 7, 1.0);       // D-pad up: steering assist
     rumble_on_ = declare_parameter<double>("rumble_on", 0.15);          // s of rumble when an aid turns on
     rumble_off_ = declare_parameter<double>("rumble_off", 0.6);         // s when it turns off
     avoidance_client_ = std::make_shared<rclcpp::AsyncParametersClient>(this, "/avoidance_controller_node");
@@ -97,9 +99,14 @@ public:
         if (p.get_name() == "require_localization") {require_localization_ = p.as_bool();}
         if (p.get_name() == "localization_timeout") {localization_timeout_ = p.as_double();}
         if (p.get_name() == "joystick_timeout") {joystick_timeout_ = p.as_double();}
-        if (p.get_name() == "assist_button") {assist_button_ = static_cast<int>(p.as_int());}
-        if (p.get_name() == "avoidance_button") {avoidance_button_ = static_cast<int>(p.as_int());}
-        if (p.get_name() == "brake_button") {brake_button_ = static_cast<int>(p.as_int());}
+        for (const auto & [prefix, input] : std::initializer_list<std::pair<const char *, JoyInput *>>{
+            {"brake", &brake_input_}, {"avoidance", &avoidance_input_}, {"assist", &assist_input_}})
+        {
+          std::string name = p.get_name();
+          if (name == std::string(prefix) + "_button") {input->button = static_cast<int>(p.as_int());}
+          if (name == std::string(prefix) + "_axis") {input->axis = static_cast<int>(p.as_int());}
+          if (name == std::string(prefix) + "_axis_value") {input->axis_value = p.as_double();}
+        }
         if (p.get_name() == "rumble_on") {rumble_on_ = p.as_double();}
         if (p.get_name() == "rumble_off") {rumble_off_ = p.as_double();}
       }
@@ -187,7 +194,8 @@ private:
     engage_was_ = engage;
     disengage_was_ = disengage;
 
-    bool assist = pressed(assist_button_), avoidance = pressed(avoidance_button_), brake = pressed(brake_button_);
+    bool assist = active(joy, assist_input_), avoidance = active(joy, avoidance_input_);
+    bool brake = active(joy, brake_input_);
     if (assist && !assist_was_) {
       bool on = !assist_enabled_;
       set_parameter(rclcpp::Parameter("assist_enabled", on));
@@ -203,6 +211,28 @@ private:
     assist_was_ = assist;
     avoidance_was_ = avoidance;
     brake_was_ = brake;
+  }
+
+  struct JoyInput
+  {
+    int button;         // -1: none
+    int axis;           // -1: none
+    double axis_value;  // the axis counts as pressed near this value (D-pad: +1 or -1)
+  };
+
+  JoyInput declare_input(const std::string & prefix, int button, int axis, double axis_value)
+  {
+    return {static_cast<int>(declare_parameter<int>(prefix + "_button", button)),
+      static_cast<int>(declare_parameter<int>(prefix + "_axis", axis)),
+      declare_parameter<double>(prefix + "_axis_value", axis_value)};
+  }
+
+  static bool active(const sensor_msgs::msg::Joy & joy, const JoyInput & in)
+  {
+    bool button = in.button >= 0 && in.button < static_cast<int>(joy.buttons.size()) && joy.buttons[in.button] != 0;
+    bool axis = in.axis >= 0 && in.axis < static_cast<int>(joy.axes.size()) && in.axis_value != 0.0 &&
+      joy.axes[in.axis] * in.axis_value > 0.5 * in.axis_value * in.axis_value;
+    return button || axis;
   }
 
   // Flips another node's "enabled" parameter (avoidance controller, safety brake) and buzzes the result
@@ -307,7 +337,7 @@ private:
   rclcpp::Subscription<f1tenth_bringup::msg::LocalizationState>::SharedPtr localization_sub_;
   bool engage_was_ = false, disengage_was_ = false, joy_seen_ = false;
   bool assist_was_ = false, avoidance_was_ = false, brake_was_ = false;
-  int assist_button_, avoidance_button_, brake_button_;
+  JoyInput brake_input_, avoidance_input_, assist_input_;
   double rumble_on_, rumble_off_;
   rclcpp::Time rumble_until_;
   rclcpp::TimerBase::SharedPtr rumble_timer_;

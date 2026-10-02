@@ -589,7 +589,7 @@ DriverAidsCard::DriverAidsCard(RosBridge * ros, QWidget * parent)
   slider_row("Autonomous speed", auto_speed_, auto_speed_value_, 10, 100);
   slider_row("Boost (LT) up to", boost_, boost_value_, 10, 100);
   root->addWidget(aids);
-  auto * keys = makeLabel("Joystick: X steering assist, Y obstacle avoidance, View collision brake. "
+  auto * keys = makeLabel("Joystick: X collision brake, Y obstacle avoidance, D-pad up steering assist. "
     "Short buzz: on, long buzz: off.", 11, QFont::Normal, theme::text3);
   keys->setWordWrap(true);
   aids->body()->addWidget(keys);

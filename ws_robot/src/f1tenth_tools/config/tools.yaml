@@ -20,9 +20,11 @@ drive_coordinator:
     follower_timeout: 0.3
     engage_button: 0                        # A: engage autonomous
     disengage_button: 1                     # B: disengage autonomous
-    assist_button: 3                        # X: steering assist on/off
+    brake_button: 3                         # X: collision brake on/off
     avoidance_button: 4                     # Y: obstacle avoidance on/off
-    brake_button: 10                        # View: collision brake on/off
+    assist_button: -1                       # steering assist on/off: D-pad up (axis 7 at +1)...
+    assist_axis: 7
+    assist_axis_value: 1.0
     rumble_on: 0.15                         # s the controller buzzes when an aid turns on
     rumble_off: 0.6                         # s when it turns off
 
